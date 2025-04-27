@@ -57,7 +57,7 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 
 app.get("/", (req, res) => {
-  res.send("Hello Retail Master");
+  res.send("Hello Soft Mariyam");
 });
 // app.use('/api/v1/home', require('./routes/home/homeRoutes'))
 app.use("/api/v1", require("./routes/authRoutes"));
