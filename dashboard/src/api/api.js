@@ -1,6 +1,6 @@
 import axios from "axios";
 const production = "";
-const local = "https://hotel-softmariyam.onrender.com";
+const local = "https://retailmasterv2.onrender.com";
 //const local = "http://localhost:4000";
 const api = axios.create({
   baseURL: `${local}/api/v1`,
