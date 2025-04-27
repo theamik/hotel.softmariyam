@@ -228,6 +228,11 @@ class authControllers {
 
     try {
       const owner = await ownerModel.findById(id).populate("companyId");
+
+      if (owner.status !== "active") {
+        responseReturn(res, 404, { error: "Your account is not active!" });
+      }
+
       responseReturn(res, 200, { userInfo: owner });
     } catch (error) {
       responseReturn(res, 500, { error: "Internal server error" });
