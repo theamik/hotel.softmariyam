@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Link, useNavigate } from "react-router-dom";
 import { owner_login } from "../../store/Actions/authAction";
-import { messageClear } from "../../store/reducers/authReducer.js";
+import { messageClear } from "../../store/reducers/authReducer";
 import { PropagateLoader } from "react-spinners";
 import { toast } from "react-hot-toast";
 import LogoDark from "../../images/logo/logo-dark.svg";
