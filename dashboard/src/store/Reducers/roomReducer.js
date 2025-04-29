@@ -23,6 +23,7 @@ const initialState = {
   categories: [],
   category: "",
   totalRoom: 0,
+  totalCategory: 0,
 };
 
 export const roomSlice = createSlice({
@@ -65,6 +66,7 @@ export const roomSlice = createSlice({
         state.loader = false;
         state.successMessage = action.payload.message;
         state.categories = action.payload.categories;
+        state.totalCategory = action.payload.totalCategory;
       })
       .addCase(get_a_category.pending, (state) => {
         state.isLoading = true;
@@ -84,7 +86,6 @@ export const roomSlice = createSlice({
       .addCase(room_add.fulfilled, (state, action) => {
         state.loader = false;
         state.successMessage = action.payload.message;
-        state.room = action.payload.room;
       })
       .addCase(room_add.rejected, (state, action) => {
         state.loader = false;
@@ -107,6 +108,7 @@ export const roomSlice = createSlice({
         state.loader = false;
         state.successMessage = action.payload.message;
         state.rooms = action.payload.rooms;
+        state.totalRoom = action.payload.totalRoom;
       })
       .addCase(get_a_room.pending, (state) => {
         state.loader = true;

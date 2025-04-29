@@ -170,7 +170,7 @@ const LoremModal: React.FC<{ modal: typeof BasicModal }> = ({ modal }) => {
 
 const TableThirteen = () => {
   const [params, setParams] = useSearchParams();
-  const { categories } = useSelector((state) => state?.room);
+  const { categories, totalCategory } = useSelector((state) => state?.room);
   const dispatch = useDispatch();
   useEffect(() => {
     dispatch(categories_get());
@@ -206,7 +206,10 @@ const TableThirteen = () => {
             </div>
           </div>
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <div className="block w-full overflow-hidden md:w-max"></div>
+            <div className="block w-full overflow-hidden md:w-max">
+              {" "}
+              <p className="text-xl">Total Category : {totalCategory}</p>
+            </div>
             <div className="w-full md:w-72">
               <div className="relative h-10 w-full min-w-[200px]">
                 <div className="absolute grid w-5 h-5 top-2/4 right-3 -translate-y-2/4 place-items-center text-blue-gray-500">

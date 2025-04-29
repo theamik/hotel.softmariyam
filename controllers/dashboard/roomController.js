@@ -64,7 +64,10 @@ class roomController {
 
   get_categories = async (req, res) => {
     try {
-      const categories = await categoryModel.find({}).sort({ name: 1 });
+      const categories = await categoryModel
+        .find({})
+        .sort({ name: 1 })
+        .populate("roomId");
       const totalCategory = await categoryModel.find({}).countDocuments();
       responseReturn(res, 200, { totalCategory, categories });
     } catch (error) {
@@ -94,6 +97,11 @@ class roomController {
         status: status,
         categoryId: new ObjectId(categoryId),
       });
+      const newId = room.id;
+      const category = await categoryModel.findById(categoryId);
+      const test = category.roomId;
+      test.push(newId);
+      await category.save();
       responseReturn(res, 201, {
         room,
         message: "Room added successfully",
