@@ -10,6 +10,7 @@ router.post("/food-add", authMiddleware, foodController.add_food);
 router.put("/food-update", authMiddleware, foodController.update_food);
 router.get("/foods-get", authMiddleware, foodController.get_foods);
 router.get("/food-get/:foodId", authMiddleware, foodController.get_food);
+router.get("/menu-foods/:menuId", authMiddleware, foodController.menu_foods);
 router.get("/out-foods-get", authMiddleware, foodController.get_out_foods);
 router.post("/table-add", authMiddleware, foodController.add_table);
 router.put("/table-update", authMiddleware, foodController.update_table);

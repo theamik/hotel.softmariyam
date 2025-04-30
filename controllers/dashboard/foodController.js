@@ -172,6 +172,17 @@ class foodController {
       responseReturn(res, 500, { error: error.message });
     }
   };
+  menu_foods = async (req, res) => {
+    const { menuId } = req.params;
+
+    try {
+      const foods = await foodModel.find({ menuId: menuId });
+      responseReturn(res, 200, { foods });
+    } catch (error) {
+      responseReturn(res, 500, { error: error.message });
+    }
+  };
+
   get_out_foods = async (req, res) => {
     const { id } = req;
     const { page, searchValue, parPage } = req.query;

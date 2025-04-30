@@ -132,6 +132,20 @@ export const foods_get = createAsyncThunk(
   }
 );
 
+export const menu_foods = createAsyncThunk(
+  "food/menu-foods",
+  async (menuId, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.get(`/menu-foods/${menuId}`, {
+        withCredentials: true,
+      });
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
 export const get_a_food = createAsyncThunk(
   "food/get_food",
   async (foodId, { rejectWithValue, fulfillWithValue }) => {

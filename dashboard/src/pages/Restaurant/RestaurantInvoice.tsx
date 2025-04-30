@@ -1,15 +1,24 @@
 import moment from "moment";
-import React from "react";
+import React, { useRef } from "react";
 import { useSelector } from "react-redux";
+import { useReactToPrint } from "react-to-print";
 
 const RestaurantInvoice: React.FC = () => {
   const { program, errorMessage, successMessage } = useSelector(
     (state) => state?.order
   );
+  const componentRef = useRef<HTMLDivElement | null>(null);
+  const handlePrint = useReactToPrint({
+    documentTitle: "Title",
+    contentRef: componentRef,
+  });
+
+  console.log(componentRef.current);
+
   return (
     <>
       <div className="max-w-[95rem] px-4 sm:px-6 lg:px-8 mx-auto my-4 sm:my-10">
-        <div className="sm:w-11/12  mx-auto">
+        <div ref={componentRef} className="sm:w-11/12  mx-auto">
           <div className="flex flex-col p-4 sm:p-10 bg-white shadow-md rounded-xl dark:bg-neutral-800">
             <div className="flex justify-between">
               <div>
@@ -358,6 +367,33 @@ const RestaurantInvoice: React.FC = () => {
                 </div>
               </div>
             </div>
+            <div className="grid grid-cols-1 gap-9 sm:grid-cols-2 mt-5">
+              <div className="flex flex-col gap-9">
+                {/* <!-- Textarea Fields --> */}
+                <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+                  <div className="flex flex-col gap-5.5 p-4">
+                    <div>
+                      <label className="mb-1 block text-black dark:text-white">
+                        Authority Signature
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-9">
+                {/* <!-- Textarea Fields --> */}
+                <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+                  <div className="flex flex-col gap-5.5 p-4">
+                    <div>
+                      <label className="mb-1 block text-black dark:text-white">
+                        Guest Signature:
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="mt-8 sm:mt-12">
               <h4 className="text-lg font-semibold text-gray-800 dark:text-neutral-200">
                 Thank you!
@@ -368,64 +404,64 @@ const RestaurantInvoice: React.FC = () => {
               </p>
               <div className="mt-2">
                 <p className="block text-sm font-medium text-gray-800 dark:text-neutral-200">
-                  example@site.com
+                  info@hiltownhotel.com
                 </p>
                 <p className="block text-sm font-medium text-gray-800 dark:text-neutral-200">
-                  +1 (062) 109-9222
+                  +880 1618-366051
                 </p>
               </div>
             </div>
 
             <p className="mt-5 text-sm text-gray-500 dark:text-neutral-500">
-              © 2022 Preline.
+              © 2025 softmariyam.
             </p>
           </div>
-          <div className="mt-6 flex justify-end gap-x-3">
-            <a
-              className="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none focus:outline-none focus:bg-gray-50 dark:bg-transparent dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
-              href="#"
+        </div>
+        <div className="mt-6 flex justify-end gap-x-3">
+          <button
+            className="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-gray-200 bg-white text-gray-800 shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:pointer-events-none focus:outline-none focus:bg-gray-50 dark:bg-transparent dark:border-neutral-700 dark:text-neutral-300 dark:hover:bg-neutral-800 dark:focus:bg-neutral-800"
+            onClick={handlePrint}
+          >
+            <svg
+              className="shrink-0 size-4"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
             >
-              <svg
-                className="shrink-0 size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" x2="12" y1="15" y2="3" />
-              </svg>
-              Invoice PDF
-            </a>
-            <a
-              className="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
-              href="#"
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" x2="12" y1="15" y2="3" />
+            </svg>
+            Invoice PDF
+          </button>
+          <button
+            className="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-transparent bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:bg-blue-700 disabled:opacity-50 disabled:pointer-events-none"
+            onClick={handlePrint}
+          >
+            <svg
+              className="shrink-0 size-4"
+              xmlns="http://www.w3.org/2000/svg"
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
             >
-              <svg
-                className="shrink-0 size-4"
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              >
-                <polyline points="6 9 6 2 18 2 18 9" />
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                <rect width="12" height="8" x="6" y="14" />
-              </svg>
-              Print
-            </a>
-          </div>
+              <polyline points="6 9 6 2 18 2 18 9" />
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+              <rect width="12" height="8" x="6" y="14" />
+            </svg>
+            Print
+          </button>
         </div>
       </div>
     </>

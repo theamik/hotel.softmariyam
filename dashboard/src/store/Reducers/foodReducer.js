@@ -20,6 +20,7 @@ import {
   guest_update,
   guests_get,
   get_a_guest,
+  menu_foods,
 } from "../Actions/foodAction";
 
 const initialState = {
@@ -116,6 +117,11 @@ export const foodSlice = createSlice({
         state.errorMessage = action.payload.error;
       })
       .addCase(foods_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.foods = action.payload.foods;
+      })
+      .addCase(menu_foods.fulfilled, (state, action) => {
         state.loader = false;
         state.successMessage = action.payload.message;
         state.foods = action.payload.foods;

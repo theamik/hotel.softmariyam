@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   foods_get,
   get_a_food,
+  menu_foods,
   menus_get,
 } from "../../store/Actions/foodAction";
 import { cartActions } from "../../store/Reducers/cartReducer";
@@ -261,9 +262,13 @@ const FormElements = () => {
                     menus.map((d, i) => (
                       <div className="hs-carousel-pagination-item shrink-0 border  border-black-2 dark:border-white rounded-md overflow-hidden cursor-pointer w-[150px] h-[150px] hs-carousel-active:border-blue-400">
                         <div className="flex justify-center h-full bg-gray-100 p-2 dark:bg-neutral-900">
-                          <span className="self-center text-xs text-gray-800 transition duration-700 dark:text-white">
+                          <button
+                            type="button"
+                            onClick={() => dispatch(menu_foods(d?._id))}
+                            className="self-center text-xs text-gray-800 transition duration-700 dark:text-white"
+                          >
                             {d?.name}
-                          </span>
+                          </button>
                         </div>
                       </div>
                     ))}
