@@ -2,7 +2,7 @@ const router = require("express").Router();
 const { authMiddleware } = require("../../middlewares/authMiddleware");
 const foodController = require("../../controllers/dashboard/foodController");
 
-router.post("/food-add", authMiddleware, foodController.add_menu);
+router.post("/menu-add", authMiddleware, foodController.add_menu);
 router.put("/menu-update", authMiddleware, foodController.update_menu);
 router.get("/menus-get", authMiddleware, foodController.get_menus);
 router.get("/menu-get/:menuId", authMiddleware, foodController.get_menu);

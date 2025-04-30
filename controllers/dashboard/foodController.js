@@ -87,13 +87,6 @@ class foodController {
       });
 
       const newId = new ObjectId(food.id);
-      const menus = await menuModel.find({});
-      for (let j = 0; j < menus.length; j++) {
-        for (let i = 0; i < menus[j].foodId.length; i++) {
-          menus[j].foodId.pull(newId);
-          await menus[j].save();
-        }
-      }
 
       const menu = await menuModel.findById(menuId);
       const test = menu.foodId;
