@@ -260,11 +260,13 @@ const FormElements = () => {
                 <div className="hs-carousel-pagination max-h-180 flex flex-col gap-y-2 overflow-y-auto">
                   {menus &&
                     menus.map((d, i) => (
-                      <div className="hs-carousel-pagination-item shrink-0 border  border-black-2 dark:border-white rounded-md overflow-hidden cursor-pointer w-[150px] h-[150px] hs-carousel-active:border-blue-400">
+                      <div
+                        className="hs-carousel-pagination-item shrink-0 border  border-black-2 dark:border-white rounded-md overflow-hidden cursor-pointer w-[150px] h-[150px] hs-carousel-active:border-blue-400"
+                        onClick={(e) => dispatch(menu_foods(d?._id))}
+                      >
                         <div className="flex justify-center h-full bg-gray-100 p-2 dark:bg-neutral-900">
                           <button
                             type="button"
-                            onClick={() => dispatch(menu_foods(d?._id))}
                             className="self-center text-xs text-gray-800 transition duration-700 dark:text-white"
                           >
                             {d?.name}
