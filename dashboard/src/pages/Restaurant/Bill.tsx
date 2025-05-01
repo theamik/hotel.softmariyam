@@ -16,7 +16,7 @@ import { messageClear } from "../../store/Reducers/orderReducer";
 const FormElements = () => {
   const [selectedParty, setSelectedParty] = useState(null);
   const [selectedFood, setSelectedFood] = useState(null);
-  const { menus, foods } = useSelector((state) => state?.food);
+  const { menus, foods, food } = useSelector((state) => state?.food);
   const { parties, errorMessage, successMessage } = useSelector(
     (state) => state?.order
   );
@@ -100,6 +100,22 @@ const FormElements = () => {
     }
     // dispatch(cartActions.deleteCard())
   };
+
+  useEffect(() => {
+    if (selectedFood !== null) {
+      dispatch(get_a_food(selectedFood?.value));
+      setTimeout(() => {
+        dispatch(
+          cartActions.addItem({
+            id: food?._id,
+            name: food?.name,
+            price: food?.price,
+            newQuantity: newQuantity,
+          })
+        );
+      }, 1000);
+    }
+  }, [selectedFood]);
 
   useEffect(() => {
     if (errorMessage) {
