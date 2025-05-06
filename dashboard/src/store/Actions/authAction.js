@@ -86,6 +86,40 @@ export const a_user = createAsyncThunk(
   }
 );
 
+export const user_update = createAsyncThunk(
+  "auth/user-update",
+  async (
+    { mobile, companyId, role, status, userId },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.put(
+        "/user-update",
+        { mobile, companyId, role, status, userId },
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error?.response?.data);
+    }
+  }
+);
+
+export const get_pending_users = createAsyncThunk(
+  "auth/get-pending-user",
+  async (_, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.get("/pending-users", {
+        withCredentials: true,
+      });
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
 export const get_all_users = createAsyncThunk(
   "auth/get-all-user",
   async (_, { rejectWithValue, fulfillWithValue }) => {
@@ -154,6 +188,77 @@ export const change_password = createAsyncThunk(
       return fulfillWithValue(data);
     } catch (error) {
       return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const organization_register = createAsyncThunk(
+  "super/organization-register",
+  async (
+    { name, email, address, mobile, description, status, image },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.post("/company-add", {
+        name,
+        email,
+        address,
+        mobile,
+        description,
+        status,
+        image,
+      });
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error?.response?.data);
+    }
+  }
+);
+
+export const get_organizations = createAsyncThunk(
+  "super/get-organizations",
+  async (_, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.get("/companies-get", {
+        withCredentials: true,
+      });
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+export const get_a_organization = createAsyncThunk(
+  "super/get_a_organization",
+  async (companyId, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.get(`/a-company-get/${companyId}`, {
+        withCredentials: true,
+      });
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const organization_update = createAsyncThunk(
+  "super/organization-update",
+  async (
+    { name, email, address, mobile, description, status, image, companyId },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.put(
+        "/company-update",
+        { name, email, address, mobile, description, status, image, companyId },
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error?.response?.data);
     }
   }
 );

@@ -1,10 +1,8 @@
 const categoryModel = require("../../models/categoryModel");
 const inventoryModel = require("../../models/inventoryModel");
 const ownerModel = require("../../models/ownerModel");
-const cloudinary = require("../../utils/cloudinaryConfig");
 const { responseReturn } = require("../../utils/response");
 const { formidable } = require("formidable");
-const slugify = require("slugify");
 const {
   mongo: { ObjectId },
 } = require("mongoose");
@@ -14,6 +12,7 @@ const roomModel = require("../../models/roomModel");
 class roomController {
   add_category = async (req, res) => {
     const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
     const { name, occupancy, rackRate, discountRate, description, status } =
       req.body;
     try {
@@ -24,6 +23,7 @@ class roomController {
         discountRate: discountRate,
         description: description,
         status: status,
+        companyId: companyId,
       });
       responseReturn(res, 201, {
         category,
@@ -63,9 +63,11 @@ class roomController {
   };
 
   get_categories = async (req, res) => {
+    const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
     try {
       const categories = await categoryModel
-        .find({})
+        .find({ companyId: companyId })
         .sort({ name: 1 })
         .populate("roomId");
       const totalCategory = await categoryModel.find({}).countDocuments();
@@ -89,6 +91,7 @@ class roomController {
 
   add_room = async (req, res) => {
     const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
     const { name, categoryId, description, status } = req.body;
     try {
       const room = await roomModel.create({
@@ -96,6 +99,7 @@ class roomController {
         description: description,
         status: status,
         categoryId: new ObjectId(categoryId),
+        companyId: companyId,
       });
       const newId = room.id;
       const category = await categoryModel.findById(categoryId);
@@ -149,12 +153,16 @@ class roomController {
   };
 
   get_rooms = async (req, res) => {
+    const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
     try {
       const rooms = await roomModel
-        .find({})
+        .find({ companyId: companyId })
         .sort({ name: 1 })
         .populate("categoryId");
-      const totalRoom = await roomModel.find({}).countDocuments();
+      const totalRoom = await roomModel
+        .find({ companyId: companyId })
+        .countDocuments();
       responseReturn(res, 200, { totalRoom, rooms });
     } catch (error) {
       console.log(error.message);

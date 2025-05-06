@@ -48,32 +48,44 @@ class authControllers {
   owner_login = async (req, res) => {
     const { email, password } = req.body;
     try {
-      const admin = await ownerModel.findOne({ email }).select("+password");
+      const admin = await ownerModel
+        .findOne({ email })
+        .select("+password")
+        .populate("companyId");
+
       if (admin) {
         if (admin.status !== "active") {
-          responseReturn(res, 404, { error: "Your account is not active!" });
-        }
-        const match = await bcrypt.compare(password, admin.password);
-        if (match) {
-          const token = await createToken({
-            id: admin.id,
-            role: admin.role,
-            userInfo: admin,
+          responseReturn(res, 404, {
+            error: "Your account is not active!,contact with softmariyam",
           });
-          res.cookie("accessToken", token, {
-            expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
-            secure: true,
-            httpOnly: true,
-            sameSite: "none",
+        } else if (admin?.companyId?.status !== "active") {
+          responseReturn(res, 404, {
+            error: "Your company is not active!,contact with softmariyam",
           });
-          responseReturn(res, 200, { token, message: "Logged In !" });
         } else {
-          responseReturn(res, 404, { error: "Password Incorrect" });
+          const match = await bcrypt.compare(password, admin.password);
+          if (match) {
+            const token = await createToken({
+              id: admin.id,
+              role: admin.role,
+              userInfo: admin,
+            });
+            res.cookie("accessToken", token, {
+              expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+              secure: true,
+              httpOnly: true,
+              sameSite: "none",
+            });
+            responseReturn(res, 200, { token, message: "Logged In !" });
+          } else {
+            responseReturn(res, 404, { error: "Password Incorrect" });
+          }
         }
       } else {
         responseReturn(res, 404, { error: "Email not found" });
       }
     } catch (error) {
+      console.log(error);
       responseReturn(res, 500, { error: error.message });
     }
   };
@@ -229,12 +241,9 @@ class authControllers {
     try {
       const owner = await ownerModel.findById(id).populate("companyId");
 
-      if (owner.status !== "active") {
-        responseReturn(res, 404, { error: "Your account is not active!" });
-      }
-
       responseReturn(res, 200, { userInfo: owner });
     } catch (error) {
+      console.log(error);
       responseReturn(res, 500, { error: "Internal server error" });
     }
   };
@@ -250,12 +259,60 @@ class authControllers {
     }
   };
 
+  update_user = async (req, res) => {
+    const { companyId, mobile, role, status, userId } = req.body;
+
+    let Id = userId;
+    console.log(role);
+
+    if (!status) {
+      responseReturn(res, 404, { error: "Please select user status!" });
+    } else if (!role) {
+      responseReturn(res, 404, { error: "Please select user role!" });
+    } else {
+      try {
+        const user = await ownerModel.findByIdAndUpdate(Id, {
+          mobile: mobile ? mobile : "No number given",
+          role: role ? role : "hotel",
+          status: status ? status : "pending",
+          companyId: companyId,
+        });
+        responseReturn(res, 201, {
+          user,
+          message: "User updated successfully",
+        });
+      } catch (error) {
+        console.log(error);
+        responseReturn(res, 500, { error: "Internal server error" });
+      }
+    }
+  };
+
+  pendingUsers = async (req, res) => {
+    const { id, role } = req;
+
+    try {
+      const users = await ownerModel
+        .find({ status: "pending" })
+        .sort({ name: 1 })
+        .populate("companyId");
+      const totalUsers = await ownerModel.find({}).countDocuments();
+      responseReturn(res, 200, { users, totalUsers });
+    } catch (error) {
+      responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+
   allUsers = async (req, res) => {
     const { id, role } = req;
 
     try {
-      const users = await ownerModel.find({}).sort({ name: 1 });
-      responseReturn(res, 200, { users });
+      const users = await ownerModel
+        .find({})
+        .sort({ name: 1 })
+        .populate("companyId");
+      const totalUsers = await ownerModel.find({}).countDocuments();
+      responseReturn(res, 200, { users, totalUsers });
     } catch (error) {
       responseReturn(res, 500, { error: "Internal server error" });
     }

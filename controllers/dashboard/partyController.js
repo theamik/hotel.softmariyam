@@ -22,7 +22,7 @@ class partyController {
         description: description,
         accountType: accountType,
         under: under,
-        companyId: new ObjectId(companyId),
+        companyId: companyId,
       });
       responseReturn(res, 201, {
         party,
@@ -60,8 +60,12 @@ class partyController {
     const { page, searchValue, parPage } = req.query;
     const { companyId } = await ownerModel.findById(id);
     try {
-      const parties = await partyModel.find({}).sort({ name: 1 });
-      const totalParty = await partyModel.find({}).countDocuments();
+      const parties = await partyModel
+        .find({ companyId: companyId })
+        .sort({ name: 1 });
+      const totalParty = await partyModel
+        .find({ companyId: companyId })
+        .countDocuments();
       responseReturn(res, 200, { totalParty, parties });
     } catch (error) {
       console.log(error.message);

@@ -11,57 +11,37 @@ const morgan = require("morgan");
 require("dotenv").config();
 const server = http.createServer(app);
 
-exports.handler = async (event, context) => {
-  const url = "https://retailmasterv2.onrender.com";
-
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, (res) => {
-      if (res.statusCode === 200) {
-        resolve({
-          statusCode: 200,
-          body: "Server pinged successfully",
-        });
-      } else {
-        reject(
-          new Error(`Server ping failed with status code: ${res.statusCode}`)
-        );
-      }
-    });
-
-    req.on("error", (error) => {
-      reject(error);
-    });
-
-    req.end();
-  });
-};
-
-app.use(
-  cors({
-    origin: ["https://hotel-softmariyam.vercel.app"],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE"],
-  })
-);
-
 // app.use(
 //   cors({
-//     origin: ["http://localhost:5173"],
+//     origin: ["https://hotel-softmariyam.vercel.app"],
 //     credentials: true,
 //     methods: ["GET", "POST", "PUT", "DELETE"],
 //   })
 // );
 
-app.use(bodyParser.json());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  })
+);
+app.use(express.json({ limit: "10mb" }));
+app.use(
+  bodyParser.urlencoded({
+    extended: true,
+  })
+);
 app.use(cookieParser());
 app.use(morgan("dev"));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/", (req, res) => {
   res.send("Hello Soft Mariyam");
 });
 // app.use('/api/v1/home', require('./routes/home/homeRoutes'))
 app.use("/api/v1", require("./routes/authRoutes"));
-// app.use("/api/v1", require("./routes/dashboard/companyRoutes"));
+app.use("/api/v1", require("./routes/dashboard/companyRoutes"));
 app.use("/api/v1", require("./routes/dashboard/ownerRoutes"));
 // app.use("/api/v1", require("./routes/dashboard/staffRoutes"));
 app.use("/api/v1", require("./routes/dashboard/roomRoutes"));
@@ -87,3 +67,4 @@ app.use("/api/v1", require("./routes/order/orderRoutes"));
 const port = process.env.PORT;
 dbConnect();
 server.listen(port, () => console.log(`Server is running  on port ${port}!`));
+console.log("Serving static from:", path.join(__dirname, "uploads"));

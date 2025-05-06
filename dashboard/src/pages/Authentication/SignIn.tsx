@@ -6,6 +6,7 @@ import { PropagateLoader } from "react-spinners";
 import { toast } from "react-hot-toast";
 import LogoDark from "../../images/logo/logo-dark.svg";
 import Logo from "../../images/logo/logo.svg";
+import { messageClear } from "../../store/Reducers/authReducer";
 const SignIn = () => {
   const [email, setEmail] = useState();
   const [password, setPassword] = useState();
@@ -38,9 +39,11 @@ const SignIn = () => {
     }
     if (errorMessage) {
       toast.error(errorMessage);
+      dispatch(messageClear());
     }
     if (successMessage) {
       toast.success(successMessage);
+      dispatch(messageClear());
       navigate("/");
     }
   }, [role, errorMessage, successMessage]);

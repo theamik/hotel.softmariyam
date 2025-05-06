@@ -17,12 +17,16 @@ const moment = require("moment");
 class foodController {
   add_menu = async (req, res) => {
     const { id } = req;
+
+    const { companyId } = await ownerModel.findById(id);
+
     const { name, description, status } = req.body;
     try {
       const menu = await menuModel.create({
         name: name,
         description: description,
         status: status,
+        companyId: companyId,
       });
       responseReturn(res, 201, {
         menu,
@@ -52,9 +56,16 @@ class foodController {
   };
 
   get_menus = async (req, res) => {
+    const { id } = req;
+
+    const { companyId } = await ownerModel.findById(id);
     try {
-      const menus = await menuModel.find({}).sort({ name: 1 });
-      const totalMenu = await menuModel.find({}).countDocuments();
+      const menus = await menuModel
+        .find({ companyId: companyId })
+        .sort({ name: 1 });
+      const totalMenu = await menuModel
+        .find({ companyId: companyId })
+        .countDocuments();
       responseReturn(res, 200, { totalMenu, menus });
     } catch (error) {
       console.log(error.message);
@@ -75,6 +86,8 @@ class foodController {
 
   add_food = async (req, res) => {
     const { id } = req;
+
+    const { companyId } = await ownerModel.findById(id);
     const { name, menuId, description, duration, price, status } = req.body;
     try {
       const food = await foodModel.create({
@@ -84,6 +97,7 @@ class foodController {
         price: price,
         duration: duration,
         menuId: new ObjectId(menuId),
+        companyId: companyId,
       });
 
       const newId = new ObjectId(food.id);
@@ -142,12 +156,17 @@ class foodController {
   };
 
   get_foods = async (req, res) => {
+    const { id } = req;
+
+    const { companyId } = await ownerModel.findById(id);
     try {
       const foods = await foodModel
-        .find({})
+        .find({ companyId: companyId })
         .sort({ name: 1 })
         .populate("menuId");
-      const totalFood = await foodModel.find({}).countDocuments();
+      const totalFood = await foodModel
+        .find({ companyId: companyId })
+        .countDocuments();
       responseReturn(res, 200, { totalFood, foods });
     } catch (error) {
       console.log(error.message);
@@ -231,6 +250,8 @@ class foodController {
   add_table = async (req, res) => {
     const { id } = req;
 
+    const { companyId } = await ownerModel.findById(id);
+
     const { name, description, position, occupancy, status } = req.body;
     try {
       const table = await tableModel.create({
@@ -239,6 +260,7 @@ class foodController {
         status: status,
         occupancy: occupancy,
         position: position,
+        companyId: companyId,
       });
 
       responseReturn(res, 201, {
@@ -273,9 +295,16 @@ class foodController {
   };
 
   get_tables = async (req, res) => {
+    const { id } = req;
+
+    const { companyId } = await ownerModel.findById(id);
     try {
-      const tables = await tableModel.find({}).sort({ name: 1 });
-      const totalTable = await tableModel.find({}).countDocuments();
+      const tables = await tableModel
+        .find({ companyId: companyId })
+        .sort({ name: 1 });
+      const totalTable = await tableModel
+        .find({ companyId: companyId })
+        .countDocuments();
       responseReturn(res, 200, { totalTable, tables });
     } catch (error) {
       console.log(error.message);
@@ -294,7 +323,8 @@ class foodController {
     }
   };
   add_guest = async (req, res) => {
-    const { id } = req;
+    mulla;
+
     const { name, address, mobile, description, date, status } = req.body;
     var tempDate = moment(date).format();
     try {
@@ -305,6 +335,7 @@ class foodController {
         description,
         date: tempDate,
         status,
+        companyId: companyId,
       });
 
       responseReturn(res, 201, {
@@ -340,9 +371,16 @@ class foodController {
   };
 
   get_guests = async (req, res) => {
+    const { id } = req;
+
+    const { companyId } = await ownerModel.findById(id);
     try {
-      const guests = await guestModel.find({}).sort({ updatedAt: -1 });
-      const totalGuest = await guestModel.find({}).countDocuments();
+      const guests = await guestModel
+        .find({ companyId: companyId })
+        .sort({ updatedAt: -1 });
+      const totalGuest = await guestModel
+        .find({ companyId: companyId })
+        .countDocuments();
       responseReturn(res, 200, { totalGuest, guests });
     } catch (error) {
       console.log(error.message);

@@ -46,6 +46,8 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { get_user_info } from "./store/Actions/authAction";
 import Program from "./pages/Restaurant/Program";
+import Client from "./pages/Super/Client";
+import Organization from "./pages/Super/Organization";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -301,6 +303,24 @@ function App() {
                 <>
                   <PageTitle title="Activities | Soft Mariyam" />
                   <Activities />
+                </>
+              }
+            />
+            <Route
+              path="/super/organization"
+              element={
+                <>
+                  <PageTitle title="Organization | Soft Mariyam" />
+                  <Organization />
+                </>
+              }
+            />
+            <Route
+              path="/super/client"
+              element={
+                <>
+                  <PageTitle title="Client | Soft Mariyam" />
+                  <Client />
                 </>
               }
             />

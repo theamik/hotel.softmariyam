@@ -14,10 +14,14 @@ const menuSchema = new Schema(
       type: String,
       default: "Pending",
     },
+    companyId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "companies",
+    },
     foodId: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "owners",
+        ref: "foods",
       },
     ],
   },

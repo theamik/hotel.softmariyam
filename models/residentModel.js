@@ -1,47 +1,54 @@
 const { Schema, model, mongoose } = require("mongoose");
 
-const categorySchema = new Schema(
+const residentSchema = new Schema(
   {
     name: {
       type: String,
       required: true,
     },
-    occupancy: {
+    address: {
       type: String,
       required: true,
     },
-    rackRate: {
-      type: String,
-      required: true,
-    },
-    discountRate: {
+    mobile: {
       type: String,
       required: true,
     },
     description: {
       type: String,
-      required: true,
+      required: false,
+    },
+    date: {
+      type: String,
+      required: false,
     },
     status: {
       type: String,
-      default: "Pending",
+      default: "available",
     },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "companies",
     },
-    roomId: [
+    reservationId: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "rooms",
+        ref: "reservations",
       },
     ],
   },
   { timestamps: true }
 );
 
-categorySchema.index({
-  name: "text",
-});
+residentSchema.index(
+  {
+    name: "text",
+  },
+  {
+    weights: {
+      name: 5,
+    },
+  }
+);
 
-module.exports = model("categories", categorySchema);
+module.exports = model("residents", residentSchema);

@@ -143,12 +143,13 @@ class orderController {
   };
   get_parties = async (req, res) => {
     const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
     try {
       const parties = await tableModel
-        .find({ position: "available" })
+        .find({ position: "available", companyId: companyId })
         .sort({ date: -1 });
       const totalParties = await tableModel
-        .find({ position: "available" })
+        .find({ position: "available", companyId: companyId })
         .countDocuments();
       responseReturn(res, 200, {
         parties,
@@ -183,13 +184,16 @@ class orderController {
 
     const credit_party = await partyModel.find({
       accountType: "res_sales_account",
+      companyId: companyId,
     });
     const discount_party = await partyModel.find({
       accountType: "discount",
       under: "restaurant",
+      companyId: companyId,
     });
     const debit_party = await partyModel.find({
       accountType: "cash_restaurant",
+      companyId: companyId,
     });
 
     const UniqueId = Date.now().toString(36).toUpperCase();
@@ -209,6 +213,7 @@ class orderController {
           balance: finalAmount,
           date: tempDate,
           orderNo: newOrderId,
+          companyId: companyId,
         });
         const transaction2 = await transactionModel.create({
           transactionNo: UniqueId,
@@ -218,6 +223,7 @@ class orderController {
           balance: discount,
           date: tempDate,
           orderNo: newOrderId,
+          companyId: companyId,
         });
         const order = await orderModel.create({
           orderNo: newOrderId,
@@ -232,6 +238,7 @@ class orderController {
           service,
           finalAmount,
           date: tempDate,
+          companyId: companyId,
         });
 
         responseReturn(res, 201, {
@@ -246,6 +253,7 @@ class orderController {
           generatedBy: name,
           balance: totalAmount,
           date: tempDate,
+          companyId: companyId,
         });
         const order = await orderModel.create({
           orderNo: newOrderId,
@@ -260,6 +268,7 @@ class orderController {
           service,
           finalAmount,
           date: tempDate,
+          companyId: companyId,
         });
         responseReturn(res, 201, {
           order,
@@ -282,9 +291,14 @@ class orderController {
 
   get_company_orders = async (req, res) => {
     const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
     try {
-      const orders = await orderModel.find().sort({ createdAt: -1 });
-      const totalOrders = await orderModel.find().countDocuments();
+      const orders = await orderModel
+        .find({ companyId: companyId })
+        .sort({ createdAt: -1 });
+      const totalOrders = await orderModel
+        .find({ companyId: companyId })
+        .countDocuments();
 
       responseReturn(res, 200, {
         orders,
@@ -422,6 +436,7 @@ class orderController {
         service,
         date: tempDate,
         partyId,
+        companyId: companyId,
       });
 
       const table = await tableModel.findById(partyId);
@@ -439,9 +454,14 @@ class orderController {
   };
   get_company_drafts = async (req, res) => {
     const { id } = req;
+    var { companyId } = await ownerModel.findById(id);
     try {
-      const drafts = await draftModel.find({}).sort({ date: -1 });
-      const totalDrafts = await draftModel.find({}).countDocuments();
+      const drafts = await draftModel
+        .find({ companyId: companyId })
+        .sort({ date: -1 });
+      const totalDrafts = await draftModel
+        .find({ companyId: companyId })
+        .countDocuments();
 
       responseReturn(res, 200, {
         drafts,
@@ -867,13 +887,16 @@ class orderController {
     const credit_party = await partyModel.find({
       accountType: "income",
       under: "restaurant",
+      companyId: companyId,
     });
     const discount_party = await partyModel.find({
       accountType: "discount",
       under: "restaurant",
+      companyId: companyId,
     });
     const debit_party = await partyModel.find({
       accountType: "cash_restaurant",
+      companyId: companyId,
     });
     const lastPaid = paid[paid.length - 1].paid;
     const UniqueId = Date.now().toString(36).toUpperCase();
@@ -896,6 +919,7 @@ class orderController {
           balance: lastPaid,
           date: tempDate,
           orderNo: newProgramId,
+          companyId: companyId,
         });
         const transaction2 = await transactionModel.create({
           transactionNo: UniqueId,
@@ -905,6 +929,7 @@ class orderController {
           balance: discount,
           date: tempDate,
           orderNo: newProgramId,
+          companyId: companyId,
         });
         const program = await programModel.create({
           programNo: newProgramId,
@@ -928,6 +953,7 @@ class orderController {
           perHead,
           reference,
           season,
+          companyId: companyId,
         });
 
         responseReturn(res, 201, {
@@ -943,6 +969,7 @@ class orderController {
           balance: lastPaid,
           date: tempDate,
           orderNo: newProgramId,
+          companyId: companyId,
         });
         const program = await programModel.create({
           programNo: newProgramId,
@@ -966,6 +993,7 @@ class orderController {
           perHead,
           reference,
           season,
+          companyId: companyId,
         });
         responseReturn(res, 201, {
           program,
@@ -991,9 +1019,15 @@ class orderController {
 
   all_programs = async (req, res) => {
     const { id } = req;
+
+    var { companyId } = await ownerModel.findById(id);
     try {
-      const programs = await programModel.find().sort({ createdAt: -1 });
-      const totalPrograms = await programModel.find().countDocuments();
+      const programs = await programModel
+        .find({ companyId: companyId })
+        .sort({ createdAt: -1 });
+      const totalPrograms = await programModel
+        .find({ companyId: companyId })
+        .countDocuments();
 
       responseReturn(res, 200, {
         programs,
@@ -1053,13 +1087,17 @@ class orderController {
     const credit_party = await partyModel.find({
       accountType: "income",
       under: "restaurant",
+      companyId: companyId,
     });
     const discount_party = await partyModel.find({
       accountType: "discount",
       under: "restaurant",
+      companyId: companyId,
     });
     const debit_party = await partyModel.find({
       accountType: "cash_restaurant",
+      under: "restaurant",
+      companyId: companyId,
     });
     const UniqueId = Date.now().toString(36).toUpperCase();
     const program_no = await programModel

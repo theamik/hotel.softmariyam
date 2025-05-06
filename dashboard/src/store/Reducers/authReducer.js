@@ -10,6 +10,12 @@ import {
   get_all_users,
   owner_update,
   a_user,
+  organization_register,
+  get_organizations,
+  get_a_organization,
+  organization_update,
+  user_update,
+  get_pending_users,
 } from "../Actions/authAction";
 
 const returnRole = (token) => {
@@ -35,6 +41,9 @@ const initialState = {
   user: "",
   userInfo: "",
   role: "",
+  organizations: [],
+  organization: "",
+  totalOrganizations: 0,
   token: localStorage.getItem("accessToken"),
 };
 
@@ -91,6 +100,12 @@ export const authSlice = createSlice({
       .addCase(get_all_users.fulfilled, (state, action) => {
         state.loader = false;
         state.users = action.payload.users;
+        state.totalUsers = action.payload.totalUsers;
+      })
+      .addCase(get_pending_users.fulfilled, (state, action) => {
+        state.loader = false;
+        state.users = action.payload.users;
+        state.totalUsers = action.payload.totalUsers;
       })
       .addCase(get_user_info.fulfilled, (state, action) => {
         state.loader = false;
@@ -125,6 +140,48 @@ export const authSlice = createSlice({
         state.successMessage = action.payload.message;
       })
       .addCase(change_password.rejected, (state, action) => {
+        state.loader = false;
+        state.errorMessage = action.payload.error;
+      })
+      .addCase(organization_register.pending, (state) => {
+        state.loader = true;
+      })
+      .addCase(organization_register.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+      })
+      .addCase(organization_register.rejected, (state, action) => {
+        state.loader = false;
+        state.errorMessage = action.payload.error;
+      })
+      .addCase(get_organizations.fulfilled, (state, action) => {
+        state.loader = false;
+        state.organizations = action.payload.companies;
+        state.totalOrganizations = action.payload.totalCompany;
+      })
+      .addCase(get_a_organization.fulfilled, (state, action) => {
+        state.loader = false;
+        state.organization = action.payload.company;
+      })
+      .addCase(organization_update.pending, (state) => {
+        state.loader = true;
+      })
+      .addCase(organization_update.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+      })
+      .addCase(organization_update.rejected, (state, action) => {
+        state.loader = false;
+        state.errorMessage = action.payload.error;
+      })
+      .addCase(user_update.pending, (state) => {
+        state.loader = true;
+      })
+      .addCase(user_update.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+      })
+      .addCase(user_update.rejected, (state, action) => {
         state.loader = false;
         state.errorMessage = action.payload.error;
       });

@@ -1,64 +1,70 @@
-const { Schema, model,mongoose } = require('mongoose');
-const branchSchema = new Schema({
+const { Schema, model, mongoose } = require("mongoose");
+const branchSchema = new Schema(
+  {
     name: {
-        type: String,
-        required: [true, 'Please enter branch name!']
+      type: String,
+      required: [true, "Please enter branch name!"],
     },
     email: {
-        type: String,
+      type: String,
     },
     slug: {
-        type: String,
+      type: String,
     },
     address: {
-        type: String,
-        required: [true, 'Please enter branch address!'],
+      type: String,
+      required: [true, "Please enter branch address!"],
     },
     mobile: {
-        type: String,
-        required: [true, 'Please enter branch mobile number!'],
-        minLength: [11, 'Mobile number must be at least 11 characters'],
+      type: String,
+      required: [true, "Please enter branch mobile number!"],
+      minLength: [11, "Mobile number must be at least 11 characters"],
     },
     companyId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "companies"
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "companies",
     },
     description: {
-        type: String,
+      type: String,
     },
     status: {
-        type: String,
-        default: 'Pending'
+      type: String,
+      default: "Pending",
     },
     division: {
-        type: String,
+      type: String,
     },
     district: {
-        type: String,
+      type: String,
     },
     sub_district: {
-        type: String,
+      type: String,
     },
     police_station: {
-        type: String,
+      type: String,
     },
     post_code: {
-        type: String,
+      type: String,
     },
     createdAt: {
-        type: Date,
-        default: Date.now,
+      type: Date,
+      default: Date.now,
     },
-}, { timestamps: true })
+  },
+  { timestamps: true }
+);
 
-branchSchema.index({
-    name: 'text',
-    mobile: 'text'
-}, {
+branchSchema.index(
+  {
+    name: "text",
+    mobile: "text",
+  },
+  {
     weights: {
-        name: 5,
-        email: 4,
-    }
-})
+      name: 5,
+      email: 4,
+    },
+  }
+);
 
 module.exports = model("branches", branchSchema);

@@ -14,6 +14,8 @@ router.post("/staff-login", authControllers.staff_login);
 router.get("/get-user", authMiddleware, authControllers.getUser);
 router.get("/get-a-user/:userId", authMiddleware, authControllers.get_a_user);
 router.get("/all-users", authMiddleware, authControllers.allUsers);
+router.get("/pending-users", authMiddleware, authControllers.pendingUsers);
+router.put("/user-update", authMiddleware, authControllers.update_user);
 router.post(
   "/profile-image-upload",
   authMiddleware,

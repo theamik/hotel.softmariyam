@@ -4,10 +4,11 @@ import ClickOutside from "../ClickOutside";
 import UserOne from "../../images/user/user-01.png";
 import { useDispatch, useSelector } from "react-redux";
 import { logout } from "../../store/Actions/authAction";
+import { intLocal } from "../../api/api";
 
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const { role } = useSelector((state) => state?.auth);
+  const { role, userInfo } = useSelector((state) => state?.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -25,13 +26,15 @@ const DropdownUser = () => {
       >
         <span className="hidden text-right lg:block">
           <span className="block text-sm font-medium text-black dark:text-white">
-            Hiltown Hotel
+            {userInfo?.companyId?.name}
           </span>
-          <span className="block text-xs">Claim and Quit</span>
+          <span className="block text-xs">
+            {userInfo?.companyId?.description}
+          </span>
         </span>
 
         <span className="h-12 w-12 rounded-full">
-          <img src={UserOne} alt="User" />
+          <img src={`${intLocal}${userInfo?.companyId?.image}`} alt="User" />
         </span>
 
         <svg

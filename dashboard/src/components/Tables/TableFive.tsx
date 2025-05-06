@@ -12,11 +12,13 @@ import {
 } from "../../store/Actions/orderAction.js";
 import toast from "react-hot-toast";
 import { messageClear } from "../../store/Reducers/orderReducer";
+import { intLocal } from "../../api/api.js";
 
 const TableFive = () => {
   const { order, orders, errorMessage, successMessage } = useSelector(
     (state) => state?.order
   );
+  const { userInfo } = useSelector((state) => state?.auth);
   const [showModal, setShowModal] = useState(false);
   const dispatch = useDispatch();
   const componentRef = useRef<HTMLDivElement>(null);
@@ -32,9 +34,13 @@ const TableFive = () => {
   const cancelHandler = () => {
     setShowModal(false);
   };
+
   const handlePrint = useReactToPrint({
-    content: () => componentRef.current,
+    documentTitle: "Title",
+    contentRef: componentRef,
   });
+
+  console.log(componentRef.current);
 
   const currentDate = moment(new Date()).format("LL");
   const cancelOrder = (orderId, date) => {
@@ -414,12 +420,19 @@ const TableFive = () => {
           <div id="invoice-POS" ref={componentRef}>
             <center id="top">
               <div className="info">
-                <div className="logo"></div>
-                <h2>Hiltown Hotel</h2>
+                <div className="logo">
+                  <img
+                    src={`${intLocal}${userInfo?.companyId?.image}`}
+                    alt="Invoice"
+                    className="w-20 h-20 rounded-full object-cover border"
+                  />
+                </div>
+                <h2>{userInfo?.companyId?.name}</h2>
                 <p>
                   {" "}
-                  Address : VIP Road Telohaowr Taltola,Sylhet <br /> Mobile :
-                  +880 1618-366051 <br /> Email : hiltownhotel@gmail.com
+                  Address : {userInfo?.companyId?.address} <br /> Mobile :
+                  {userInfo?.companyId?.mobile} <br /> Email :
+                  {userInfo?.companyId?.email}
                 </p>
               </div>
               {/*End Info*/}

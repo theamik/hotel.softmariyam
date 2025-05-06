@@ -1,86 +1,76 @@
-import { useSearchParams } from "react-router-dom";
-import { Modal as BasicModal } from "../Modal/Basic";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import Select from "react-select";
-import {
-  get_a_party,
-  parties_get,
-  party_add,
-  party_update,
-} from "../../store/Actions/partyAction";
+import { useSearchParams } from "react-router-dom";
+import { Modal as BasicModal } from "../../components/Modal/Basic";
 import toast from "react-hot-toast";
-import { messageClear } from "../../store/Reducers/partyReducer";
+import Select from "react-select";
+import { messageClear } from "../../store/Reducers/authReducer";
+import {
+  get_a_organization,
+  get_organizations,
+  organization_register,
+  organization_update,
+} from "../../store/Actions/authAction";
+
+import { intLocal } from "../../api/api";
 
 const LoremModal: React.FC<{ modal: typeof BasicModal }> = ({ modal }) => {
-  const { loader, successMessage, errorMessage, party } = useSelector(
-    (state) => state?.party
+  const { successMessage, errorMessage, organization } = useSelector(
+    (state) => state?.auth
   );
   const [params, setParams] = useSearchParams();
   const [name, setName] = useState();
+  const [imageBase64, setImageBase64] = useState();
   const [address, setAddress] = useState();
   const [mobile, setMobile] = useState();
+  const [email, setEmail] = useState();
   const [description, setDescription] = useState();
-  const [selectedTypes, setSelectedTypes] = useState(null);
-  const [selectedUnder, setSelectedUnder] = useState(null);
+  const [selectedStatus, setSelectedStatus] = useState(null);
   const dispatch = useDispatch();
+
+  const status = [
+    { value: "inactive", label: "Inactive" },
+    { value: "active", label: "Active" },
+    { value: "pending", label: "Pending" },
+  ];
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      setImageBase64(reader.result); // base64 string
+    };
+
+    if (file) {
+      reader.readAsDataURL(file);
+    }
+  };
+
   const submitHandler = (e) => {
     e.preventDefault();
     dispatch(
-      party_add({
+      organization_register({
         name,
         address,
         mobile,
+        email,
         description,
-        accountType: selectedTypes.value,
-        under: selectedUnder.value,
+        image: imageBase64,
       })
     );
     params.delete("modal");
     setParams(params);
   };
-  const types = [
-    { value: "accounts_receivable", label: "Accounts Receivable" },
-    { value: "accounts_payable", label: "Accounts Payable" },
-    { value: "asset", label: "Asset" },
-    { value: "cash_restaurant ", label: "Cash Restaurant" },
-    { value: "cash_hotel", label: "Cash Hotel" },
-    { value: "cash_general", label: "Cash General" },
-    { value: "card_restaurant ", label: "Card Restaurant" },
-    { value: "card_hotel", label: "Card Hotel" },
-    { value: "card_general", label: "Card General" },
-    { value: "discount", label: "Discount" },
-    { value: "expense", label: "Expense" },
-    { value: "income", label: "Income" },
-    { value: "inventory", label: "Inventory" },
-    { value: "liability", label: "Liability" },
-    { value: "loan_given", label: "Loan Given" },
-    { value: "loan_taken", label: "Loan Taken" },
-    { value: "mobile_banking_restaurant ", label: "Mobile Banking Restaurant" },
-    { value: "mobile_banking_hotel", label: "Mobile Banking Hotel" },
-    { value: "mobile_banking_general", label: "Mobile Banking General" },
-    { value: "purchase_account", label: "Purchase Account" },
-    { value: "res_sales_account", label: "Sales Account Restaurant" },
-    { value: "hot_sales_account", label: "Sales Account Hotel" },
-  ];
-  const under = [
-    { value: "hotel", label: "Hotel" },
-    { value: "restaurant", label: "Restaurant" },
-    { value: "general", label: "General" },
-  ];
 
   useEffect(() => {
-    dispatch(parties_get());
-  }, [dispatch]);
-
-  useEffect(() => {
-    setName(party?.name);
-    setAddress(party?.address);
-    setMobile(party?.mobile);
-    setDescription(party?.description);
-    setSelectedTypes(types.filter((x) => x.value === party?.accountType));
-    setSelectedUnder(under.filter((x) => x.value === party?.under));
-  }, [party]);
+    setName(organization?.name);
+    setAddress(organization?.address);
+    setMobile(organization?.mobile);
+    setEmail(organization?.email);
+    setDescription(organization?.description);
+    setSelectedStatus(status.filter((x) => x.value === organization?.status));
+  }, [organization]);
 
   useEffect(() => {
     if (errorMessage) {
@@ -93,26 +83,28 @@ const LoremModal: React.FC<{ modal: typeof BasicModal }> = ({ modal }) => {
       setName("");
       setAddress("");
       setMobile("");
+      setEmail("");
       setDescription("");
-      setSelectedTypes(null);
-      setSelectedUnder(null);
-      setTimeout(() => dispatch(parties_get()), 1000);
+      setSelectedStatus(null);
+      setTimeout(() => dispatch(get_organizations()), 1000);
     }
   }, [successMessage, errorMessage]);
 
   const updateHandler = (e) => {
     e.preventDefault();
     dispatch(
-      party_update({
+      organization_update({
         name,
         address,
         mobile,
+        email,
         description,
-        accountType: selectedTypes.value,
-        under: selectedUnder.value,
-        partyId: party?._id,
+        image: imageBase64,
+        status: selectedStatus.value,
+        companyId: organization?._id,
       })
     );
+
     params.delete("modal");
     setParams(params);
   };
@@ -126,27 +118,28 @@ const LoremModal: React.FC<{ modal: typeof BasicModal }> = ({ modal }) => {
       }}
     >
       <modal.Head>
-        {party ? "Account Update 🙋‍♀️" : "Account Entry 🙋‍♀️"}
+        {organization ? "Organization Update 🙋‍♀️" : "Organization Entry 🙋‍♀️"}
       </modal.Head>
       <modal.Body>
         <div className="flex flex-col space-y-2">
           <Select
             className="text-gray-800 outline-none border-2 border-white focus:border-blue-300 p-1"
-            onChange={setSelectedTypes}
-            options={types}
-            value={selectedTypes}
-            placeholder="Account"
+            onChange={setSelectedStatus}
+            options={status}
+            value={selectedStatus}
+            placeholder="Status"
           />
-          <Select
-            className="text-gray-800 outline-none border-2 border-white focus:border-blue-300 p-1"
-            onChange={setSelectedUnder}
-            options={under}
-            value={selectedUnder}
-            placeholder="Under"
+          <input
+            className="text-gray-800 outline-none bg-white border-2 border-white focus:border-blue-300 p-1"
+            placeholder="File"
+            type="file"
+            name="image"
+            accept="image/*"
+            onChange={handleFileChange}
           />
           <input
             className="text-gray-800 outline-none border-2 border-white focus:border-blue-300 p-1"
-            placeholder="Name"
+            placeholder="Organization Name"
             type="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -160,31 +153,40 @@ const LoremModal: React.FC<{ modal: typeof BasicModal }> = ({ modal }) => {
           />
           <input
             className="text-gray-800 outline-none border-2 border-white focus:border-blue-300 p-1"
-            placeholder="Mobile"
+            placeholder="Mobile No"
             type="mobile"
             value={mobile}
             onChange={(e) => setMobile(e.target.value)}
           />
           <input
             className="text-gray-800 outline-none border-2 border-white focus:border-blue-300 p-1"
-            placeholder="Description"
-            type="description"
+            placeholder="Email Address"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+          <textarea
+            name="description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+            className="text-gray-800 outline-none border-2 border-white focus:border-blue-300 p-1"
+            placeholder="Description"
           />
-          {party ? (
+
+          {organization ? (
             <button
               className="text-gray-100 border-2 border-blue-700 bg-blue-600 rounded shadow-xl p-2 outline-none focus:border-blue-300"
               onClick={updateHandler}
             >
-              Update Account
+              Update Organization
             </button>
           ) : (
             <button
               className="text-gray-100 border-2 border-blue-700 bg-blue-600 rounded shadow-xl p-2 outline-none focus:border-blue-300"
               onClick={submitHandler}
             >
-              Create Account
+              Create Organization
             </button>
           )}
         </div>
@@ -193,12 +195,14 @@ const LoremModal: React.FC<{ modal: typeof BasicModal }> = ({ modal }) => {
   );
 };
 
-const TableEleven = () => {
+const Organization = () => {
   const [params, setParams] = useSearchParams();
-  const { parties } = useSelector((state) => state?.party);
+  const { organizations, totalOrganizations } = useSelector(
+    (state) => state?.auth
+  );
   const dispatch = useDispatch();
   useEffect(() => {
-    dispatch(parties_get());
+    dispatch(get_organizations());
   }, [dispatch]);
 
   return (
@@ -208,10 +212,10 @@ const TableEleven = () => {
           <div className="flex items-center justify-between gap-8 mb-8">
             <div>
               <h5 className="block font-sans text-xl antialiased font-semibold leading-snug tracking-normal text-blue-gray-900">
-                Account
+                Organization
               </h5>
               <p className="block mt-1 font-sans text-base antialiased font-normal leading-relaxed text-gray-700 dark:text-white">
-                See information about all accounts
+                See information about all Organizations
               </p>
             </div>
             <div className="flex flex-col gap-2 shrink-0 sm:flex-row">
@@ -219,19 +223,24 @@ const TableEleven = () => {
                 className="select-none rounded-lg border border-gray-900 py-2 px-4 text-center align-middle font-sans text-xs font-bold uppercase text-gray-900 dark:text-white transition-all hover:opacity-75 focus:ring focus:ring-gray-300 active:opacity-[0.85] disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
                 type="button"
               >
-                Type
+                Organization
               </button>
               <button
                 className="flex select-none items-center gap-3 rounded-lg bg-gray-900 py-2 px-4 text-center align-middle font-sans text-xs font-bold uppercase text-white shadow-md shadow-gray-900/10 transition-all hover:shadow-lg hover:shadow-gray-900/20 focus:opacity-[0.85] focus:shadow-none active:opacity-[0.85] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
                 onClick={() => setParams({ ...params, modal: "true" })}
               >
-                New Account
+                New Organization
               </button>
               <LoremModal modal={BasicModal} />
             </div>
           </div>
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-            <div className="block w-full overflow-hidden md:w-max"></div>
+            <div className="block w-full dark:text-white overflow-hidden md:w-max">
+              {" "}
+              <p className="text-xl dark:text-white">
+                Total Organization : {totalOrganizations}
+              </p>
+            </div>
             <div className="w-full md:w-72">
               <div className="relative h-10 w-full min-w-[200px]">
                 <div className="absolute grid w-5 h-5 top-2/4 right-3 -translate-y-2/4 place-items-center text-blue-gray-500">
@@ -266,9 +275,9 @@ const TableEleven = () => {
           <table className="w-full mt-4 text-left table-auto min-w-max">
             <thead>
               <tr>
-                <th className="p-4 transition-colors cursor-pointer border-y border-blue-gray-100 bg-blue-gray-50/50 hover:bg-blue-gray-50">
-                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70">
-                    Name
+                <th className="dark:text-white p-4 transition-colors cursor-pointer border-y border-blue-gray-100 bg-blue-gray-50/50 hover:bg-blue-gray-50">
+                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70 dark:text-white">
+                    SL
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -287,8 +296,8 @@ const TableEleven = () => {
                   </p>
                 </th>
                 <th className="p-4 transition-colors cursor-pointer border-y border-blue-gray-100 bg-blue-gray-50/50 hover:bg-blue-gray-50">
-                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70">
-                    Type
+                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70 dark:text-white">
+                    Image
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -307,8 +316,8 @@ const TableEleven = () => {
                   </p>
                 </th>
                 <th className="p-4 transition-colors cursor-pointer border-y border-blue-gray-100 bg-blue-gray-50/50 hover:bg-blue-gray-50">
-                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70">
-                    Under
+                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70 dark:text-white">
+                    Organization Name
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -327,8 +336,8 @@ const TableEleven = () => {
                   </p>
                 </th>
                 <th className="p-4 transition-colors cursor-pointer border-y border-blue-gray-100 bg-blue-gray-50/50 hover:bg-blue-gray-50">
-                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70">
-                    Balance
+                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70 dark:text-white">
+                    Address
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
@@ -347,44 +356,105 @@ const TableEleven = () => {
                   </p>
                 </th>
                 <th className="p-4 transition-colors cursor-pointer border-y border-blue-gray-100 bg-blue-gray-50/50 hover:bg-blue-gray-50">
-                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70"></p>
+                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70 dark:text-white">
+                    Mobile
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="2"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                      className="w-4 h-4"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
+                      ></path>
+                    </svg>
+                  </p>
+                </th>
+                <th className="p-4 transition-colors cursor-pointer border-y border-blue-gray-100 bg-blue-gray-50/50 hover:bg-blue-gray-50">
+                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70 dark:text-white">
+                    Status
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke-width="2"
+                      stroke="currentColor"
+                      aria-hidden="true"
+                      className="w-4 h-4"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
+                      ></path>
+                    </svg>
+                  </p>
+                </th>
+                <th className="p-4 transition-colors cursor-pointer border-y border-blue-gray-100 bg-blue-gray-50/50 hover:bg-blue-gray-50">
+                  <p className="flex items-center justify-between gap-2 font-sans text-sm antialiased font-normal leading-none text-blue-gray-900 opacity-70 dark:text-white"></p>
                 </th>
               </tr>
             </thead>
             <tbody>
-              {parties &&
-                parties.map((d, i) => (
+              {organizations &&
+                organizations.map((d, i) => (
                   <tr>
                     <td className="p-4 border-b border-blue-gray-50">
                       <div className="flex items-center gap-3">
                         <div className="flex flex-col">
-                          <p className="block font-sans text-sm antialiased font-normal leading-normal text-blue-gray-900">
-                            {d.name}
+                          <p className="block font-sans text-sm antialiased font-normal leading-normal text-blue-gray-900 dark:text-white">
+                            {i + 1}{" "}
                           </p>
                         </div>
                       </div>
                     </td>
+
                     <td className="p-4 border-b border-blue-gray-50">
-                      <p className="block font-sans text-sm antialiased font-normal leading-normal text-blue-gray-900">
-                        {d.accountType}
+                      <div className="flex items-center dark:text-white">
+                        <img
+                          src={`${intLocal}${d?.image}`}
+                          alt="Uploaded"
+                          className="w-20 h-20 rounded-full object-cover border"
+                        />
+                      </div>
+                    </td>
+                    <td className="p-4 border-b border-blue-gray-50">
+                      <p className="block font-sans text-sm antialiased font-normal leading-normal text-blue-gray-900 dark:text-white">
+                        {d.name}
                       </p>
                     </td>
                     <td className="p-4 border-b border-blue-gray-50">
-                      <p className="block font-sans text-sm antialiased font-normal leading-normal text-blue-gray-900">
-                        {d.under}
-                      </p>
+                      <div className="flex flex-col">
+                        <p className="block font-sans text-sm antialiased font-normal leading-normal text-blue-gray-900 dark:text-white">
+                          {d.address}
+                        </p>
+                      </div>
                     </td>
                     <td className="p-4 border-b border-blue-gray-50">
-                      <p className="block font-sans text-sm antialiased font-normal leading-normal text-blue-gray-900">
-                        {d.balance}
-                      </p>
+                      <div className="flex flex-col">
+                        <p className="block font-sans text-sm antialiased font-normal leading-normal text-blue-gray-900 dark:text-white">
+                          {d.mobile}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="p-4 border-b border-blue-gray-50">
+                      <div className="w-max">
+                        <div className="relative grid items-center px-2 py-1 font-sans text-xs font-bold text-green-900 uppercase rounded-md select-none whitespace-nowrap bg-green-500/20 dark:text-white">
+                          {d.status}
+                        </div>
+                      </div>
                     </td>
                     <td className="p-4 border-b border-blue-gray-50">
                       <button
                         className="relative h-10 max-h-[40px] w-10 max-w-[40px] select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 dark:text-gray-2 transition-all hover:bg-gray-900/10 dark:hover:bg-blue-200 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
                         type="button"
                         onClick={(e) =>
-                          dispatch(get_a_party(d._id)) &&
+                          dispatch(get_a_organization(d._id)) &&
                           setParams({ ...params, modal: "true" })
                         }
                       >
@@ -406,9 +476,28 @@ const TableEleven = () => {
             </tbody>
           </table>
         </div>
+        {/* <div className="flex items-center justify-between p-4 border-t border-blue-gray-50">
+          <p className="block font-sans text-sm antialiased font-normal leading-normal text-blue-gray-900">
+            Page 1 of 10
+          </p>
+          <div className="flex gap-2">
+            <button
+              className="select-none rounded-lg border border-gray-900 py-2 px-4 text-center align-middle font-sans text-xs font-bold uppercase text-gray-900 transition-all hover:opacity-75 focus:ring focus:ring-gray-300 active:opacity-[0.85] disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+              type="button"
+            >
+              Previous
+            </button>
+            <button
+              className="select-none rounded-lg border border-gray-900 py-2 px-4 text-center align-middle font-sans text-xs font-bold uppercase text-gray-900 transition-all hover:opacity-75 focus:ring focus:ring-gray-300 active:opacity-[0.85] disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+              type="button"
+            >
+              Next
+            </button>
+          </div>
+        </div> */}
       </div>
     </div>
   );
 };
 
-export default TableEleven;
+export default Organization;

@@ -10,10 +10,12 @@ import moment from "moment";
 import { useReactToPrint } from "react-to-print";
 import "../../css/InvoiceStyles.css";
 import { Button, Modal } from "antd";
+import { intLocal } from "../../api/api";
 const PreOrder = () => {
   const { preOrder, preOrders, errorMessage, successMessage } = useSelector(
     (state) => state?.order
   );
+  const { userInfo } = useSelector((state) => state?.auth);
   const [showModal, setShowModal] = useState(false);
   const dispatch = useDispatch();
   const componentRef = useRef<HTMLDivElement>(null);
@@ -387,6 +389,17 @@ const PreOrder = () => {
                         KOT
                       </h3>
                     </p>
+                    <center id="top">
+                      <div className="info">
+                        <div className="logo">
+                          <img
+                            src={`${intLocal}${userInfo?.companyId?.image}`}
+                            alt="Invoice"
+                            className="w-20 h-20 rounded-full object-cover border"
+                          />
+                        </div>
+                      </div>
+                    </center>
                     <p className="flex justify-between  items-center">
                       <span>
                         {" "}
