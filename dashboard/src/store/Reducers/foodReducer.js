@@ -21,6 +21,14 @@ import {
   guests_get,
   get_a_guest,
   menu_foods,
+  hotel_guests_get,
+  new_reservation,
+  get_a_reservation,
+  reservations_get,
+  update_reservation_status,
+  update_reservation,
+  get_reservations_by_date_status,
+  get_reservations_by_date_status_stay_view,
 } from "../Actions/foodAction";
 
 const initialState = {
@@ -179,7 +187,7 @@ export const foodSlice = createSlice({
       })
       .addCase(guest_add.fulfilled, (state, action) => {
         state.loader = false;
-        state.successMessage = action.payload.message;
+        state.guest = action.payload.guest;
       })
       .addCase(guest_add.rejected, (state, action) => {
         state.loader = false;
@@ -201,6 +209,12 @@ export const foodSlice = createSlice({
         state.loader = false;
         state.successMessage = action.payload.message;
         state.guests = action.payload.guests;
+      })
+      .addCase(hotel_guests_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.guests = action.payload.guests;
+        state.totalGuest = action.payload.totalGuest;
       })
       .addCase(get_a_guest.pending, (state) => {
         state.loader = true;
@@ -254,7 +268,89 @@ export const foodSlice = createSlice({
       .addCase(get_a_table.rejected, (state, action) => {
         state.loader = false;
         state.errorMessage = action.payload.error;
-      });
+      })
+      .addCase(new_reservation.pending, (state) => {
+        state.loader = true;
+      })
+      .addCase(new_reservation.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.reservation = action.payload.reservation;
+      })
+      .addCase(new_reservation.rejected, (state, action) => {
+        state.loader = false;
+        state.errorMessage = action.payload.error;
+        state.errorMessage = action.payload.message;
+      })
+      .addCase(reservations_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.reservations = action.payload.reservations;
+        state.totalReservations = action.payload.totalReservations;
+      })
+      .addCase(get_a_reservation.pending, (state) => {
+        state.loader = true;
+      })
+      .addCase(get_a_reservation.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.reservation = action.payload.reservation;
+      })
+      .addCase(get_a_reservation.rejected, (state, action) => {
+        state.loader = false;
+        state.errorMessage = action.payload.error;
+      })
+      .addCase(update_reservation_status.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+      })
+      .addCase(update_reservation_status.rejected, (state, action) => {
+        state.loader = false;
+        state.errorMessage = action.payload.message;
+      })
+      .addCase(update_reservation.pending, (state) => {
+        state.loader = true;
+      })
+      .addCase(update_reservation.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.reservation = action.payload.reservation;
+      })
+      .addCase(update_reservation.rejected, (state, action) => {
+        state.loader = false;
+        state.errorMessage = action.payload.error;
+        state.errorMessage = action.payload.message;
+      })
+      .addCase(get_reservations_by_date_status.pending, (state) => {
+        state.loadingReservations = true;
+        state.reservationsError = null;
+      })
+      .addCase(get_reservations_by_date_status.fulfilled, (state, action) => {
+        state.loadingReservations = false;
+        state.reservations = action.payload.reservations;
+      })
+      .addCase(get_reservations_by_date_status.rejected, (state, action) => {
+        state.loadingReservations = false;
+        state.reservationsError = action.payload;
+      })
+      .addCase(get_reservations_by_date_status_stay_view.pending, (state) => {
+        state.loadingReservations = true;
+        state.reservationsError = null;
+      })
+      .addCase(
+        get_reservations_by_date_status_stay_view.fulfilled,
+        (state, action) => {
+          state.loadingReservations = false;
+          state.reservations = action.payload.reservations;
+        }
+      )
+      .addCase(
+        get_reservations_by_date_status_stay_view.rejected,
+        (state, action) => {
+          state.loadingReservations = false;
+          state.reservationsError = action.payload;
+        }
+      );
   },
 });
 

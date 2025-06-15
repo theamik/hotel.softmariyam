@@ -12,6 +12,10 @@ import {
   category_update,
   get_a_category,
   categories_get,
+  available_rooms_get,
+  booked_rooms_get,
+  available_rooms_get_for_edit,
+  booked_rooms_get_for_edit,
 } from "../Actions/roomAction";
 
 const initialState = {
@@ -24,6 +28,7 @@ const initialState = {
   category: "",
   totalRoom: 0,
   totalCategory: 0,
+  bookedRooms: [],
 };
 
 export const roomSlice = createSlice({
@@ -109,6 +114,26 @@ export const roomSlice = createSlice({
         state.successMessage = action.payload.message;
         state.rooms = action.payload.rooms;
         state.totalRoom = action.payload.totalRoom;
+      })
+      .addCase(available_rooms_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.rooms = action.payload.rooms;
+      })
+      .addCase(available_rooms_get_for_edit.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.rooms = action.payload.rooms;
+      })
+      .addCase(booked_rooms_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.bookedRooms = action.payload.bookedRooms;
+      })
+      .addCase(booked_rooms_get_for_edit.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.bookedRooms = action.payload.bookedRooms;
       })
       .addCase(get_a_room.pending, (state) => {
         state.loader = true;

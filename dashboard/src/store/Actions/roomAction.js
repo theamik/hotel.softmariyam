@@ -123,7 +123,6 @@ export const room_update = createAsyncThunk(
           withCredentials: true,
         }
       );
-      localStorage.setItem("accessToken", data.token);
       return fulfillWithValue(data);
     } catch (error) {
       return rejectWithValue(error?.response?.data);
@@ -136,6 +135,81 @@ export const rooms_get = createAsyncThunk(
   async (_, { rejectWithValue, fulfillWithValue }) => {
     try {
       const { data } = await api.get("/rooms-get", { withCredentials: true });
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const available_rooms_get = createAsyncThunk(
+  "room/available-rooms-get",
+  async ({ startDate, endDate }, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      console.log(startDate);
+      const { data } = await api.get(
+        `/available-rooms-get?startDate=${startDate}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const available_rooms_get_for_edit = createAsyncThunk(
+  "room/available-rooms-get-for-edit",
+  async (
+    { startDate, reservationId },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/available-rooms-get-for-edit?startDate=${startDate}&reservationId=${reservationId}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const booked_rooms_get = createAsyncThunk(
+  "room/booked-rooms-get",
+  async (startDate, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.get(
+        `/booked-rooms-get?startDate=${startDate}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const booked_rooms_get_for_edit = createAsyncThunk(
+  "room/booked-rooms-get-for-edit",
+  async (
+    { startDate, reservationId },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/booked-rooms-get-for-edit?startDate=${startDate}&reservationId=${reservationId}`,
+        {
+          withCredentials: true,
+        }
+      );
       return fulfillWithValue(data);
     } catch (error) {
       return rejectWithValue(error.response.data);

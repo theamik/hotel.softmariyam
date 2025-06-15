@@ -1,41 +1,84 @@
 const { Schema, model, mongoose } = require("mongoose");
-const programModel = new Schema(
+
+const reservationModel = new Schema(
   {
     reservationNo: {
       type: Number,
+      unique: true,
+      required: true, // Making it required as it's a primary identifier
     },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "companies",
+      required: true,
     },
     branchId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "branches",
+      default: null,
     },
     transactionId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "transactions",
+      required: true,
     },
     residentId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "residents",
+      ref: "guests",
+      required: true,
     },
     generatedBy: {
       type: String,
       required: true,
     },
-    roomId: [
+    // REVERTED: roomDetails is now an array of objects again
+    roomDetails: [
       {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "rooms",
+        _id: false, // Prevents Mongoose from creating _id for subdocuments if not explicitly needed
+        roomId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "rooms",
+          required: true,
+        },
+        rackRate: {
+          type: Number,
+          required: true,
+        },
+        discountRate: {
+          type: Number,
+          default: 0,
+        },
+        category: {
+          type: String,
+          required: true,
+        },
+        dayStay: {
+          type: Number,
+          required: true,
+        },
+        // Optional: If you want to track individual check-in/out for each room in a group reservation
+        // checkInDate: { type: String },
+        // checkOutDate: { type: String },
       },
     ],
-    others: {
-      type: Array,
-    },
-    restaurant: {
-      type: Array,
-    },
+
+    // Keeping 'others' and 'restaurants' as single objects as previously discussed,
+    // assuming they are for the *primary* service or a single additional service for the whole reservation.
+    // If you need multiple, distinct 'other' or 'restaurant' charges per reservation,
+    // these would also need to be arrays of sub-objects. For now, keeping as objects.
+    others: [
+      {
+        other: { type: String, default: "" },
+        otherAmount: { type: Number, default: 0 },
+      },
+    ],
+    restaurants: [
+      {
+        restaurant: { type: String, default: "" },
+        restaurantAmount: { type: Number, default: 0 },
+      },
+    ],
+
     totalAmount: {
       type: Number,
       required: true,
@@ -56,8 +99,9 @@ const programModel = new Schema(
       type: Number,
       default: 0,
     },
-    paid: {
+    paidInfo: {
       type: Array,
+      default: [],
     },
     bookedDate: {
       type: String,
@@ -71,16 +115,26 @@ const programModel = new Schema(
       type: String,
       required: true,
     },
-    reference: {
+    source: {
       type: String,
       required: true,
     },
     status: {
       type: String,
       default: "will_check",
+      enum: ["checked_in", "checked_out", "will_check", "cancel"],
+    },
+    remark: {
+      type: String,
+      default: "",
+    },
+    billTransfer: {
+      type: mongoose.Schema.Types.ObjectId, // Storing the roomId for transfer
+      ref: "rooms",
+      default: null,
     },
   },
   { timestamps: true }
 );
 
-module.exports = model("programs", programModel);
+module.exports = model("reservations", reservationModel);

@@ -13,6 +13,28 @@ router.get(
 router.post("/room-add", authMiddleware, roomController.add_room);
 router.put("/room-update", authMiddleware, roomController.update_room);
 router.get("/rooms-get", authMiddleware, roomController.get_rooms);
+router.get(
+  "/available-rooms-get",
+  authMiddleware,
+  roomController.get_available_rooms
+);
+
+router.get(
+  "/available-rooms-get-for-edit",
+  authMiddleware,
+  roomController.get_available_rooms_for_edit
+);
+router.get(
+  "/booked-rooms-get",
+  authMiddleware,
+  roomController.get_booked_rooms
+);
+
+router.get(
+  "/booked-rooms-get-for-edit",
+  authMiddleware,
+  roomController.get_booked_rooms_for_edit
+);
 router.get("/room-get/:roomId", authMiddleware, roomController.get_room);
 router.get("/out-rooms-get", authMiddleware, roomController.get_out_rooms);
 

@@ -26,6 +26,14 @@ const guestSchema = new Schema(
       type: String,
       default: "available",
     },
+    under: {
+      type: String,
+      default: "hotel",
+    },
+    count: {
+      type: Number,
+      default: 0,
+    },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "companies",
@@ -34,6 +42,12 @@ const guestSchema = new Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "programs",
+      },
+    ],
+    reservationId: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "reservations",
       },
     ],
   },

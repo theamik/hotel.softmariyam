@@ -1,4 +1,70 @@
+import { useEffect, useState } from "react"; // Import useState
+import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import {
+  get_a_reservation,
+  reservations_get,
+  update_reservation_status,
+} from "../../store/Actions/foodAction";
+import { messageClear } from "../../store/Reducers/foodReducer";
+import toast from "react-hot-toast";
+import moment from "moment"; // Assuming you have an action for updating status
+
+// Assuming 'Select' is a component from a library like react-select
+// If it's a custom component, ensure it accepts 'onChange', 'options', and 'value' props.
+// import Select from 'react-select'; // Uncomment if using react-select
+
 const TableOne = () => {
+  const { reservations, totalReservations, errorMessage, successMessage } =
+    useSelector((state) => state?.food);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  // State to manage the visibility of the status dropdown for each reservation
+  const [openStatusDropdown, setOpenStatusDropdown] = useState(null); // Stores the ID of the reservation whose dropdown is open
+
+  // Define your status options
+  const statusOptions = [
+    { value: "will_check", label: "Will Check" },
+    { value: "check_in", label: "Check In" },
+    { value: "checked_out", label: "Checked Out" }, // Changed from 'check_out' to 'checked_out' for consistency
+    { value: "cancel", label: "Cancel" },
+  ];
+
+  useEffect(() => {
+    dispatch(reservations_get());
+  }, [dispatch]);
+
+  // Handler for changing reservation status
+  const handleStatusChange = (reservationId, newStatusValue) => {
+    dispatch(update_reservation_status({ reservationId, newStatusValue }));
+    setOpenStatusDropdown(null); // Close the dropdown after selection
+  };
+
+  const invoiceHandler = (reservationId) => {
+    dispatch(get_a_reservation(reservationId));
+    navigate("/hotel/invoice");
+  };
+  const editHandler = (reservationId, startDate) => {
+    const formattedDate = moment(startDate).format("YYYY-MM-DD");
+
+    navigate(
+      `/hotel/reservation/edit?reservationId=${reservationId}&&checkInDate=${formattedDate}`
+    );
+  };
+
+  useEffect(() => {
+    if (errorMessage) {
+      toast.error(errorMessage);
+      dispatch(messageClear());
+    }
+    if (successMessage) {
+      toast.success(successMessage);
+      dispatch(messageClear());
+      dispatch(reservations_get());
+    }
+  }, [successMessage, errorMessage]);
+
   return (
     <div className="rounded-sm border border-stroke bg-white px-5 pt-6 pb-2.5 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
       <div className="relative flex flex-col w-full h-full text-gray-700 dark:text-white bg-white dark:bg-boxdark shadow-md rounded-xl bg-clip-border">
@@ -19,12 +85,13 @@ const TableOne = () => {
               >
                 View all
               </button>
-              <button
+              <Link
                 className="flex select-none items-center gap-3 rounded-lg bg-gray-900 py-2 px-4 text-center align-middle font-sans text-xs font-bold uppercase text-white shadow-md shadow-gray-900/10 transition-all hover:shadow-lg hover:shadow-gray-900/20 focus:opacity-[0.85] focus:shadow-none active:opacity-[0.85] active:shadow-none disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
                 type="button"
+                to="/hotel/new-reservation"
               >
                 New Reservation
-              </button>
+              </Link>
             </div>
           </div>
           <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
@@ -74,6 +141,13 @@ const TableOne = () => {
                 </ul>
               </nav>
             </div>
+          </div>
+          <div className="flex flex-col items-center justify-between gap-4 md:flex-row">
+            <div className="block w-full overflow-hidden md:w-max">
+              <p className="text-xl">
+                Total Reservations : {totalReservations}
+              </p>
+            </div>
             <div className="w-full md:w-72">
               <div className="relative h-10 w-full min-w-[200px]">
                 <div className="absolute grid w-5 h-5 top-2/4 right-3 -translate-y-2/4 place-items-center text-blue-gray-500">
@@ -81,14 +155,14 @@ const TableOne = () => {
                     xmlns="http://www.w3.org/2000/svg"
                     fill="none"
                     viewBox="0 0 24 24"
-                    stroke-width="1.5"
+                    strokeWidth="1.5"
                     stroke="currentColor"
                     aria-hidden="true"
                     className="w-5 h-5"
                   >
                     <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                       d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
                     ></path>
                   </svg>
@@ -115,14 +189,14 @@ const TableOne = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="2"
+                      strokeWidth="2"
                       stroke="currentColor"
                       aria-hidden="true"
                       className="w-4 h-4"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
                       ></path>
                     </svg>
@@ -135,14 +209,14 @@ const TableOne = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="2"
+                      strokeWidth="2"
                       stroke="currentColor"
                       aria-hidden="true"
                       className="w-4 h-4"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
                       ></path>
                     </svg>
@@ -155,14 +229,14 @@ const TableOne = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="2"
+                      strokeWidth="2"
                       stroke="currentColor"
                       aria-hidden="true"
                       className="w-4 h-4"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
                       ></path>
                     </svg>
@@ -175,14 +249,14 @@ const TableOne = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="2"
+                      strokeWidth="2"
                       stroke="currentColor"
                       aria-hidden="true"
                       className="w-4 h-4"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
                       ></path>
                     </svg>
@@ -195,14 +269,14 @@ const TableOne = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="2"
+                      strokeWidth="2"
                       stroke="currentColor"
                       aria-hidden="true"
                       className="w-4 h-4"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
                       ></path>
                     </svg>
@@ -215,14 +289,14 @@ const TableOne = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="2"
+                      strokeWidth="2"
                       stroke="currentColor"
                       aria-hidden="true"
                       className="w-4 h-4"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
                       ></path>
                     </svg>
@@ -235,14 +309,14 @@ const TableOne = () => {
                       xmlns="http://www.w3.org/2000/svg"
                       fill="none"
                       viewBox="0 0 24 24"
-                      stroke-width="2"
+                      strokeWidth="2"
                       stroke="currentColor"
                       aria-hidden="true"
                       className="w-4 h-4"
                     >
                       <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
                         d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9"
                       ></path>
                     </svg>
@@ -255,389 +329,157 @@ const TableOne = () => {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
+              {reservations &&
+                reservations?.map((i, j) => (
+                  <tr key={i?._id || j}>
+                    {" "}
+                    {/* Use a unique key like _id */}
+                    <td className="p-4 border-b border-blue-gray-50">
                       <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                        John Michael
+                        {i?.bookedDate}
                       </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex flex-col">
-                    <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                      Booking.com
-                    </p>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    Tk 8,000.00
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="w-max">
-                    <div className="relative grid items-center px-2 py-1 font-sans text-xs font-bold text-green-900 uppercase rounded-md select-none whitespace-nowrap bg-green-500/20 dark:bg-slate-300 ">
-                      <span className="">Will Check</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <button
-                    className="relative h-10 max-h-[40px] w-10 max-w-[40px] select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 dark:text-gray-2 transition-all hover:bg-gray-900/10 dark:hover:bg-blue-200 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-                    type="button"
-                  >
-                    <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        aria-hidden="true"
-                        className="w-4 h-4"
-                      >
-                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z"></path>
-                      </svg>
-                    </span>
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
+                    </td>
+                    <td className="p-4 border-b border-blue-gray-50">
+                      <div className="flex items-center gap-3">
+                        <div className="flex flex-col">
+                          <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
+                            {i?.residentId?.name}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4 border-b border-blue-gray-50">
                       <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                        John Michael
+                        {i?.checkInDate}
                       </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex flex-col">
-                    <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                      Booking.com
-                    </p>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    Tk 8,000.00
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="w-max">
-                    <div className="relative grid items-center px-2 py-1 font-sans text-xs font-bold text-green-900 uppercase rounded-md select-none whitespace-nowrap bg-green-500/20 dark:bg-slate-300 ">
-                      <span className="">Will Check</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <button
-                    className="relative h-10 max-h-[40px] w-10 max-w-[40px] select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 dark:text-gray-2 transition-all hover:bg-gray-900/10 dark:hover:bg-blue-200 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-                    type="button"
-                  >
-                    <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        aria-hidden="true"
-                        className="w-4 h-4"
-                      >
-                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z"></path>
-                      </svg>
-                    </span>
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
+                    </td>
+                    <td className="p-4 border-b border-blue-gray-50">
                       <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                        John Michael
+                        {i?.checkOutDate}
                       </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex flex-col">
-                    <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                      Booking.com
-                    </p>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    Tk 8,000.00
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="w-max">
-                    <div className="relative grid items-center px-2 py-1 font-sans text-xs font-bold text-green-900 uppercase rounded-md select-none whitespace-nowrap bg-green-500/20 dark:bg-slate-300 ">
-                      <span className="">Will Check</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <button
-                    className="relative h-10 max-h-[40px] w-10 max-w-[40px] select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 dark:text-gray-2 transition-all hover:bg-gray-900/10 dark:hover:bg-blue-200 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-                    type="button"
-                  >
-                    <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        aria-hidden="true"
-                        className="w-4 h-4"
-                      >
-                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z"></path>
-                      </svg>
-                    </span>
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
+                    </td>
+                    <td className="p-4 border-b border-blue-gray-50">
+                      <div className="flex flex-col">
+                        <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
+                          {i?.source}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="p-4 border-b border-blue-gray-50">
                       <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                        John Michael
+                        {i?.totalAmount}
                       </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex flex-col">
-                    <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                      Booking.com
-                    </p>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    Tk 8,000.00
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="w-max">
-                    <div className="relative grid items-center px-2 py-1 font-sans text-xs font-bold text-green-900 uppercase rounded-md select-none whitespace-nowrap bg-green-500/20 dark:bg-slate-300 ">
-                      <span className="">Will Check</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <button
-                    className="relative h-10 max-h-[40px] w-10 max-w-[40px] select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 dark:text-gray-2 transition-all hover:bg-gray-900/10 dark:hover:bg-blue-200 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-                    type="button"
-                  >
-                    <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        aria-hidden="true"
-                        className="w-4 h-4"
-                      >
-                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z"></path>
-                      </svg>
-                    </span>
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                        John Michael
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex flex-col">
-                    <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                      Booking.com
-                    </p>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    Tk 8,000.00
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="w-max">
-                    <div className="relative grid items-center px-2 py-1 font-sans text-xs font-bold text-green-900 uppercase rounded-md select-none whitespace-nowrap bg-green-500/20 dark:bg-slate-300 ">
-                      <span className="">Will Check</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <button
-                    className="relative h-10 max-h-[40px] w-10 max-w-[40px] select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 dark:text-gray-2 transition-all hover:bg-gray-900/10 dark:hover:bg-blue-200 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-                    type="button"
-                  >
-                    <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        aria-hidden="true"
-                        className="w-4 h-4"
-                      >
-                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z"></path>
-                      </svg>
-                    </span>
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex items-center gap-3">
-                    <div className="flex flex-col">
-                      <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                        John Michael
-                      </p>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    23/04/18
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="flex flex-col">
-                    <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                      Booking.com
-                    </p>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                    Tk 8,000.00
-                  </p>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <div className="w-max">
-                    <div className="relative grid items-center px-2 py-1 font-sans text-xs font-bold text-green-900 uppercase rounded-md select-none whitespace-nowrap bg-green-500/20 dark:bg-slate-300 ">
-                      <span className="">Will Check</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 border-b border-blue-gray-50">
-                  <button
-                    className="relative h-10 max-h-[40px] w-10 max-w-[40px] select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 dark:text-gray-2 transition-all hover:bg-gray-900/10 dark:hover:bg-blue-200 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
-                    type="button"
-                  >
-                    <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                        aria-hidden="true"
-                        className="w-4 h-4"
-                      >
-                        <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z"></path>
-                      </svg>
-                    </span>
-                  </button>
-                </td>
-              </tr>
+                    </td>
+                    <td className="p-4 border-b border-blue-gray-50">
+                      <div className="w-max relative">
+                        {/* Status Display and Clickable area */}
+                        <div
+                          className="relative grid items-center px-2 py-1 font-sans text-xs font-bold uppercase rounded-md select-none whitespace-nowrap cursor-pointer"
+                          style={{
+                            backgroundColor:
+                              i?.status === "will_check"
+                                ? "rgba(255, 165, 0, 0.2)"
+                                : i?.status === "check_in"
+                                  ? "rgba(0, 128, 0, 0.2)"
+                                  : i?.status === "checked_out"
+                                    ? "rgba(128, 0, 128, 0.2)"
+                                    : i?.status === "cancel"
+                                      ? "rgba(255, 0, 0, 0.2)"
+                                      : "",
+                            color:
+                              i?.status === "will_check"
+                                ? "orange"
+                                : i?.status === "check_in"
+                                  ? "green"
+                                  : i?.status === "checked_out"
+                                    ? "purple"
+                                    : i?.status === "cancel"
+                                      ? "red"
+                                      : "black",
+                          }}
+                          onClick={() =>
+                            setOpenStatusDropdown(
+                              openStatusDropdown === i?._id ? null : i?._id
+                            )
+                          }
+                        >
+                          <span className="">
+                            {statusOptions.find(
+                              (option) => option.value === i?.status
+                            )?.label || i?.status}
+                          </span>
+                        </div>
+
+                        {/* Status Dropdown */}
+                        {openStatusDropdown === i?._id && (
+                          <div className="absolute z-10 mt-1 w-full rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                            <div className="py-1">
+                              {statusOptions.map((option) => (
+                                <div
+                                  key={option.value}
+                                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer"
+                                  onClick={() =>
+                                    handleStatusChange(i?._id, option.value)
+                                  }
+                                >
+                                  {option.label}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4 border-b border-blue-gray-50">
+                      <div className="flex gap-2">
+                        {/* Edit Button */}
+                        <button
+                          className="relative h-10 w-10 select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 dark:text-gray-200 transition-all hover:bg-gray-900/10 dark:hover:bg-blue-200 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+                          type="button"
+                          onClick={(e) => editHandler(i?._id, i?.checkInDate)}
+                        >
+                          <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 24 24"
+                              fill="currentColor"
+                              className="w-4 h-4"
+                            >
+                              <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
+                            </svg>
+                          </span>
+                        </button>
+
+                        {/* Print Button */}
+                        <button
+                          className="relative h-10 w-10 select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 dark:text-gray-200 transition-all hover:bg-gray-900/10 dark:hover:bg-blue-200 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none"
+                          type="button"
+                          onClick={(e) => invoiceHandler(i?._id)}
+                        >
+                          <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              fill="currentColor"
+                              viewBox="0 0 24 24"
+                              className="w-4 h-4"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M6 2a1 1 0 00-1 1v4h14V3a1 1 0 00-1-1H6zM5 8a2 2 0 00-2 2v5a1 1 0 001 1h2v4a1 1 0 001 1h10a1 1 0 001-1v-4h2a1 1 0 001-1v-5a2 2 0 00-2-2H5zm4 9a1 1 0 100-2h6a1 1 0 100 2H9z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
             </tbody>
           </table>
         </div>
         <div className="flex items-center justify-between p-4 border-t border-blue-gray-50">
-          <p className="block font-sans  text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
+          <p className="block font-sans  text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
             Page 1 of 10
           </p>
           <div className="flex gap-2">

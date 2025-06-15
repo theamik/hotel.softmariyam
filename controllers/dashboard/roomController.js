@@ -1,8 +1,11 @@
 const categoryModel = require("../../models/categoryModel");
 const inventoryModel = require("../../models/inventoryModel");
 const ownerModel = require("../../models/ownerModel");
+const reservationModel = require("../../models/reservationModel");
 const { responseReturn } = require("../../utils/response");
 const { formidable } = require("formidable");
+const moment = require("moment");
+
 const {
   mongo: { ObjectId },
 } = require("mongoose");
@@ -170,11 +173,191 @@ class roomController {
     }
   };
 
+  get_available_rooms = async (req, res) => {
+    const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
+    const startDate = moment(req.query.startDate).format("YYYY-MM-DD");
+
+    const selectedDate = new Date(startDate);
+    var inDate = moment(selectedDate).format("YYYY-MM-DD");
+
+    const nextDay = new Date(selectedDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    var outDate = moment(nextDay).format("YYYY-MM-DD");
+    try {
+      // 1. Get all rooms of the company
+      const allRooms = await roomModel
+        .find({ companyId })
+        .populate("categoryId");
+
+      // 2. Find all reservations that overlap with the date
+      const reservations = await reservationModel.find({
+        status: { $ne: "cancel" },
+        checkInDate: { $lt: outDate },
+        checkOutDate: { $gt: inDate },
+        companyId: companyId,
+      });
+      // 3. Collect all reserved room IDs
+      const reservedRoomIds = reservations?.flatMap((res) =>
+        res.roomDetails.map((detail) => detail.roomId.toString())
+      );
+
+      // 4. Filter out reserved rooms
+      const availableRooms = allRooms
+        .filter((room) => !reservedRoomIds.includes(room._id.toString()))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      // 5. Return the result
+      responseReturn(res, 200, { rooms: availableRooms });
+    } catch (error) {
+      console.log("Error fetching available rooms:", error.message);
+      responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+
+  get_available_rooms_for_edit = async (req, res) => {
+    const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
+    const { startDate, reservationId } = req.query; // startDate is for availability check, reservationId is the current reservation being edited
+
+    if (!startDate || !reservationId) {
+      return responseReturn(res, 400, {
+        message: "Start date and Reservation ID are required.",
+      });
+    }
+
+    const selectedDate = new Date(startDate);
+    var inDate = moment(selectedDate).format("YYYY-MM-DD");
+
+    const nextDay = new Date(selectedDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    var outDate = moment(nextDay).format("YYYY-MM-DD");
+    try {
+      // 1. Get all rooms of the company
+      const allRooms = await roomModel.find({ companyId });
+
+      // 2. Find all reservations that overlap with the date
+      const reservations = await reservationModel.find({
+        _id: { $ne: reservationId },
+        status: { $ne: "cancel" },
+        checkInDate: { $lt: outDate },
+        checkOutDate: { $gte: inDate },
+        companyId: companyId,
+      });
+      // 3. Collect all reserved room IDs
+      const reservedRoomIds = reservations?.flatMap((res) =>
+        res.roomDetails.map((detail) => detail.roomId.toString())
+      );
+
+      // 4. Filter out reserved rooms
+      const availableRooms = allRooms
+        .filter((room) => !reservedRoomIds.includes(room._id.toString()))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      // 5. Return the result
+      responseReturn(res, 200, { rooms: availableRooms });
+    } catch (error) {
+      console.log("Error fetching available rooms:", error.message);
+      responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+
+  get_booked_rooms = async (req, res) => {
+    const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
+    const startDate = moment(req.query.startDate).format("YYYY-MM-DD");
+
+    const selectedDate = new Date(startDate);
+    var inDate = moment(selectedDate).format("YYYY-MM-DD");
+
+    const nextDay = new Date(selectedDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    var outDate = moment(nextDay).format("YYYY-MM-DD");
+
+    try {
+      // 1. Get all rooms of the company
+      const allRooms = await roomModel.find({ companyId });
+
+      // 2. Find all reservations that overlap with the date
+      const reservations = await reservationModel.find({
+        status: { $ne: "cancel" },
+        checkInDate: { $lt: outDate },
+        checkOutDate: { $gt: inDate },
+        companyId: companyId,
+      });
+      // 3. Safely collect reserved room IDs
+      const reservedRoomIds = reservations.flatMap((res) =>
+        Array.isArray(res.roomDetails)
+          ? res.roomDetails.map((detail) => detail.roomId.toString())
+          : []
+      );
+
+      // 4. Filter rooms that are booked
+      const bookedRooms = allRooms
+        .filter((room) => reservedRoomIds.includes(room._id.toString()))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      // 5. Return the result
+      responseReturn(res, 200, { bookedRooms });
+    } catch (error) {
+      console.log("Error fetching booked rooms:", error.message);
+      responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+
+  get_booked_rooms_for_edit = async (req, res) => {
+    const { id } = req;
+    const { companyId } = await ownerModel.findById(id);
+    const { startDate, reservationId } = req.query; // startDate is for availability check, reservationId is the current reservation being edited
+
+    if (!startDate || !reservationId) {
+      return responseReturn(res, 400, {
+        message: "Start date and Reservation ID are required.",
+      });
+    }
+
+    const selectedDate = new Date(startDate);
+    var inDate = moment(selectedDate).format("YYYY-MM-DD");
+
+    const nextDay = new Date(selectedDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    var outDate = moment(nextDay).format("YYYY-MM-DD");
+
+    try {
+      // 1. Get all rooms of the company
+      const allRooms = await roomModel.find({ companyId });
+
+      // 2. Find all reservations that overlap with the date
+      const reservations = await reservationModel.find({
+        _id: { $ne: reservationId },
+        status: { $ne: "cancel" },
+        checkInDate: { $lt: outDate },
+        checkOutDate: { $gte: inDate },
+        companyId: companyId,
+      });
+      // 3. Safely collect reserved room IDs
+      const reservedRoomIds = reservations.flatMap((res) =>
+        Array.isArray(res.roomDetails)
+          ? res.roomDetails.map((detail) => detail.roomId.toString())
+          : []
+      );
+
+      // 4. Filter rooms that are booked
+      const bookedRooms = allRooms
+        .filter((room) => reservedRoomIds.includes(room._id.toString()))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      console.log(bookedRooms);
+      // 5. Return the result
+      responseReturn(res, 200, { bookedRooms });
+    } catch (error) {
+      console.log("Error fetching booked rooms:", error.message);
+      responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+
   get_room = async (req, res) => {
     const { roomId } = req.params;
 
     try {
-      const room = await roomModel.findById(roomId);
+      const room = await roomModel.findById(roomId).populate("categoryId");
       responseReturn(res, 200, { room });
     } catch (error) {
       responseReturn(res, 500, { error: error.message });

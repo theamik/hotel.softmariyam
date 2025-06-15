@@ -38,6 +38,7 @@ const LoremModal: React.FC<{ modal: typeof BasicModal }> = ({ modal }) => {
         description,
         date: startDate,
         status: selectedStatus.value,
+        under: "restaurant",
       })
     );
     dispatch(guests_get());

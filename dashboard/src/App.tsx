@@ -48,6 +48,10 @@ import { get_user_info } from "./store/Actions/authAction";
 import Program from "./pages/Restaurant/Program";
 import Client from "./pages/Super/Client";
 import Organization from "./pages/Super/Organization";
+import Reservation from "./pages/Hotel/Reservation";
+import HotelInvoiceReady from "./pages/Hotel/HotelInvoiceReady";
+import EditReservation from "./pages/Hotel/EditReservation";
+import StayView from "./pages/Hotel/StayView";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -91,6 +95,15 @@ function App() {
               }
             />
             <Route
+              path="/hotel/stay-view"
+              element={
+                <>
+                  <PageTitle title="Stay-view | Soft Mariyam" />
+                  <StayView />
+                </>
+              }
+            />
+            <Route
               path="/hotel/room-view"
               element={
                 <>
@@ -105,6 +118,33 @@ function App() {
                 <>
                   <PageTitle title="Reservation | Soft Mariyam" />
                   <Tables />
+                </>
+              }
+            />
+            <Route
+              path="/hotel/new-reservation"
+              element={
+                <>
+                  <PageTitle title="New Reservation | Soft Mariyam" />
+                  <Reservation />
+                </>
+              }
+            />
+            <Route
+              path="/hotel/invoice"
+              element={
+                <>
+                  <PageTitle title="Hotel Invoice | Soft Mariyam" />
+                  <HotelInvoiceReady />
+                </>
+              }
+            />
+            <Route
+              path="/hotel/reservation/edit"
+              element={
+                <>
+                  <PageTitle title="Hotel Reservation Edit | Soft Mariyam" />
+                  <EditReservation />
                 </>
               }
             />

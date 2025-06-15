@@ -19,6 +19,11 @@ router.get("/table-get/:tableId", authMiddleware, foodController.get_table);
 router.post("/guest-add", authMiddleware, foodController.add_guest);
 router.put("/guest-update", authMiddleware, foodController.update_guest);
 router.get("/guests-get", authMiddleware, foodController.get_guests);
+router.get(
+  "/hotel-guests-get",
+  authMiddleware,
+  foodController.get_hotel_guests
+);
 router.get("/guest-get/:guestId", authMiddleware, foodController.get_guest);
 
 module.exports = router;

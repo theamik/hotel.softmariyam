@@ -78,5 +78,44 @@ router.delete(
   "/order/cancel-program/:programId",
   orderController.cancel_program
 );
+router.post(
+  "/order/new-reservation",
+  authMiddleware,
+  orderController.new_reservation
+);
+router.get(
+  "/order/reservations-get",
+  authMiddleware,
+  orderController.all_reservations
+);
+router.get(
+  "/order/get-a-reservation/:reservationId",
+  authMiddleware,
+  orderController.get_a_reservation
+);
+
+router.put(
+  "/order/update-reservation-status/:reservationId",
+  authMiddleware,
+  orderController.update_reservation_status
+);
+
+router.put(
+  "/order/update-reservation",
+  authMiddleware,
+  orderController.update_reservation
+);
+
+router.get(
+  "/order/reservations-by-date-status",
+  authMiddleware,
+  orderController.getReservationsByDateAndStatus
+);
+
+router.get(
+  "/order/reservations-by-date-status-stay-view",
+  authMiddleware,
+  orderController.getReservationsByDateAndStatusStayView
+);
 
 module.exports = router;

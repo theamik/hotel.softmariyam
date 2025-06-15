@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../api/api";
+import moment from "moment"; // Import moment.js for date formatting
 
 export const menu_add = createAsyncThunk(
   "menu/menu-add",
@@ -289,13 +290,13 @@ export const get_a_table = createAsyncThunk(
 export const guest_add = createAsyncThunk(
   "guest/guest-add",
   async (
-    { name, address, mobile, description, date, status },
+    { name, address, mobile, description, date, status, under },
     { rejectWithValue, fulfillWithValue }
   ) => {
     try {
       const { data } = await api.post(
         "/guest-add",
-        { name, address, mobile, description, date, status },
+        { name, address, mobile, description, date, status, under },
         {
           withCredentials: true,
         }
@@ -341,9 +342,24 @@ export const guests_get = createAsyncThunk(
   }
 );
 
+export const hotel_guests_get = createAsyncThunk(
+  "guest/hotel-guests-get",
+  async (_, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.get("/hotel-guests-get", {
+        withCredentials: true,
+      });
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
 export const get_a_guest = createAsyncThunk(
   "guest/get_guest",
   async (guestId, { rejectWithValue, fulfillWithValue }) => {
+    console.log(guestId);
     try {
       const { data } = await api.get(`/guest-get/${guestId}`, {
         withCredentials: true,
@@ -351,6 +367,211 @@ export const get_a_guest = createAsyncThunk(
       return fulfillWithValue(data);
     } catch (error) {
       return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const new_reservation = createAsyncThunk(
+  "hotel/new_reservation",
+  async (
+    {
+      startDate,
+      endDate,
+      roomDetails,
+      totalGuest,
+      guestId,
+      totalAmount,
+      source,
+      others,
+      restaurants,
+      due,
+      discount,
+      paidInfo,
+      finalAmount,
+      status,
+      remark,
+      billTransfer,
+    },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.post(
+        "/order/new-reservation",
+        {
+          startDate,
+          endDate,
+          roomDetails,
+          totalGuest,
+          guestId,
+          totalAmount,
+          source,
+          others,
+          restaurants,
+          due,
+          discount,
+          paidInfo,
+          finalAmount,
+          status,
+          remark,
+          billTransfer,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error?.response?.data);
+    }
+  }
+);
+
+export const reservations_get = createAsyncThunk(
+  "hotel/reservations-get",
+  async (_, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.get("/order/reservations-get", {
+        withCredentials: true,
+      });
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const get_a_reservation = createAsyncThunk(
+  "hotel/get-a-reservation",
+  async (reservationId, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.get(
+        `/order/get-a-reservation/${reservationId}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const update_reservation_status = createAsyncThunk(
+  "hotel/update-reservation-status",
+  async (
+    { reservationId, newStatusValue },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const body = JSON.stringify({ status: newStatusValue });
+      const { data } = await api.put(
+        `/order/update-reservation-status/${reservationId}`,
+        body,
+        {
+          withCredentials: true,
+          headers: {
+            "Content-Type": "application/json", // ✅ Important for Express to parse body
+          },
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const update_reservation = createAsyncThunk(
+  "hotel/update_reservation",
+  async (
+    {
+      startDate,
+      endDate,
+      roomDetails,
+      totalGuest,
+      guestId,
+      totalAmount,
+      source,
+      others,
+      restaurants,
+      due,
+      discount,
+      paidInfo,
+      finalAmount,
+      status,
+      remark,
+      billTransfer,
+      reservationId,
+    },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.put(
+        "/order/update-reservation",
+        {
+          startDate,
+          endDate,
+          roomDetails,
+          totalGuest,
+          guestId,
+          totalAmount,
+          source,
+          others,
+          restaurants,
+          due,
+          discount,
+          paidInfo,
+          finalAmount,
+          status,
+          remark,
+          billTransfer,
+          reservationId,
+        },
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error?.response?.data);
+    }
+  }
+);
+
+export const get_reservations_by_date_status = createAsyncThunk(
+  "hotel/get-reservation-by-date-status",
+  async (selectedDate, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.get(
+        `/order/reservations-by-date-status?date=${selectedDate}`,
+        { withCredentials: true }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+export const get_reservations_by_date_status_stay_view = createAsyncThunk(
+  "hotel/get-reservation-by-date-status-stay-view",
+  // Change here: accept an object with startDate and numberOfDays
+  async (
+    { startDate, numberOfDays },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const formattedStartDate = moment(startDate).format("YYYY-MM-DD");
+
+      // Modify API call to send start date and number of days
+      const { data } = await api.get(
+        `/order/reservations-by-date-status-stay-view?startDate=${formattedStartDate}&numberOfDays=${numberOfDays}`,
+        { withCredentials: true }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );

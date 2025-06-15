@@ -6,6 +6,7 @@
 const {
   mongo: { ObjectId },
 } = require("mongoose");
+const mongoose = require("mongoose");
 const { responseReturn } = require("../../utils/response");
 
 const moment = require("moment");
@@ -19,6 +20,8 @@ const transactionModel = require("../../models/transactionModel");
 const purchaseModel = require("../../models/purchaseModel");
 const tableModel = require("../../models/tableModel");
 const programModel = require("../../models/programModel");
+const reservationModel = require("../../models/reservationModel");
+const roomModel = require("../../models/roomModel");
 class orderController {
   purchase_confirm = async (req, res) => {
     const { id } = req;
@@ -35,9 +38,9 @@ class orderController {
     } = req.body;
     // console.log(branch);
     if (value?.startDate) {
-      var tempDate = moment(value.startDate).format();
+      var tempDate = moment(value.startDate).format("YYYY-MM-DD");
     } else {
-      var tempDate = moment(Date.now()).format();
+      var tempDate = moment(Date.now()).format("YYYY-MM-DD");
     }
     const credit_party = await partyModel.findById(party);
     const debit_party = await partyModel.find({
@@ -180,7 +183,7 @@ class orderController {
       var { companyId } = await ownerModel.findById(id);
       var { name } = await ownerModel.findById(id);
     }
-    var tempDate = moment(Date.now()).format();
+    var tempDate = moment(Date.now()).format("YYYY-MM-DD");
 
     const credit_party = await partyModel.find({
       accountType: "res_sales_account",
@@ -419,9 +422,9 @@ class orderController {
     }
 
     if (value?.startDate) {
-      var tempDate = moment(value.startDate).format();
+      var tempDate = moment(value.startDate).format("YYYY-MM-DD");
     } else {
-      var tempDate = moment(Date.now()).format();
+      var tempDate = moment(Date.now()).format("YYYY-MM-DD");
     }
     try {
       const draft = await draftModel.create({
@@ -742,7 +745,7 @@ class orderController {
       var branchId = branch.toString();
       var { name } = await ownerModel.findById(id);
     }
-    const tempDate = moment(Date.now()).format();
+    const tempDate = moment(Date.now()).format("YYYY-MM-DD");
     const service_no = await serviceModel
       .find()
       .sort({ $natural: -1 })
@@ -836,7 +839,7 @@ class orderController {
 
   update_status = async (req, res) => {
     const { serviceId, status, station } = req.body;
-    const updateDate = moment(Date.now()).format();
+    const updateDate = moment(Date.now()).format("YYYY-MM-DD");
     try {
       await serviceModel.findByIdAndUpdate(serviceId, {
         status,
@@ -882,8 +885,8 @@ class orderController {
       var { companyId } = await ownerModel.findById(id);
       var { name } = await ownerModel.findById(id);
     }
-    var tempDate = moment(Date.now()).format();
-    var date = moment(programDate).format();
+    var tempDate = moment(Date.now()).format("YYYY-MM-DD");
+    var date = moment(programDate).format("YYYY-MM-DD");
     const credit_party = await partyModel.find({
       accountType: "income",
       under: "restaurant",
@@ -1082,8 +1085,8 @@ class orderController {
       var { companyId } = await ownerModel.findById(id);
       var { name } = await ownerModel.findById(id);
     }
-    var tempDate = moment(Date.now()).format();
-    var date = moment(programDate).format();
+    var tempDate = moment(Date.now()).format("YYYY-MM-DD");
+    var date = moment(programDate).format("YYYY-MM-DD");
     const credit_party = await partyModel.find({
       accountType: "income",
       under: "restaurant",
@@ -1246,6 +1249,1075 @@ class orderController {
       });
     } catch (error) {
       console.log(error.message);
+    }
+  };
+  // Ensure moment is imported if not already
+
+  new_reservation = async (req, res) => {
+    const { id, role } = req;
+
+    // Destructure roomDetails, others, and restaurants directly from req.body
+    // Remove individual room-related fields (roomId, rackRate, discountRate, category, dayStay)
+    // as they are now encapsulated within the roomDetails array.
+    const {
+      startDate,
+      endDate,
+      roomDetails, // This will be the array of room objects from the frontend
+      totalGuest,
+      guestId,
+      totalAmount,
+      source,
+      others, // This should be an array of objects
+      restaurants, // This should be an array of objects
+      due,
+      discount,
+      paidInfo,
+      finalAmount,
+      status,
+      remark,
+      billTransfer, // This should be the roomId (ObjectId) if selected
+    } = req.body;
+
+    let companyId, generatedByName, branchId;
+
+    try {
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          return responseReturn(res, 404, { message: "Staff not found." });
+        }
+        companyId = staff.companyId;
+        generatedByName = staff.name;
+        branchId = staff.branchId;
+      } else {
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          return responseReturn(res, 404, { message: "Owner not found." });
+        }
+        companyId = owner.companyId;
+        generatedByName = owner.name;
+        branchId = null;
+      }
+
+      if (!companyId) {
+        return responseReturn(res, 400, {
+          message: "Company ID not found for the user.",
+        });
+      }
+
+      const tempDate = moment().format("YYYY-MM-DD");
+      const checkInDate = moment(startDate).format("YYYY-MM-DD");
+      const checkOutDate = moment(endDate).format("YYYY-MM-DD");
+      const UniqueId = Date.now().toString(36).toUpperCase();
+
+      const lastReservation = await reservationModel
+        .findOne({ companyId })
+        .sort({ createdAt: -1 })
+        .select("reservationNo");
+
+      let newReservationId;
+      if (lastReservation && lastReservation.reservationNo) {
+        newReservationId = Number(lastReservation.reservationNo) + 1;
+      } else {
+        newReservationId = 30001;
+      }
+
+      const [credit_party, discount_party, debit_party] = await Promise.all([
+        partyModel.findOne({
+          accountType: "hot_sales_account",
+          under: "hotel",
+          companyId: companyId,
+        }),
+        partyModel.findOne({
+          accountType: "discount",
+          under: "hotel",
+          companyId: companyId,
+        }),
+        partyModel.findOne({
+          accountType: "cash_hotel",
+          under: "hotel",
+          companyId: companyId,
+        }),
+      ]);
+
+      if (!credit_party || !debit_party || !discount_party) {
+        return responseReturn(res, 500, {
+          message:
+            "Required financial accounts not found. Please ensure 'hot_sales_account', 'discount', and 'cash_hotel' parties are set up for your company.",
+        });
+      }
+
+      const lastPaid =
+        paidInfo && paidInfo.length > 0
+          ? Number(paidInfo[paidInfo.length - 1].paid)
+          : 0;
+
+      // billTransfer should be an ObjectId of the room, not its name.
+      // The frontend should send the room's _id if a bill transfer is selected.
+      let transferRoomId = null;
+      if (billTransfer) {
+        // billTransfer from frontend is already the room's _id
+        const roomToTransfer = await roomModel.findById(billTransfer);
+        if (!roomToTransfer) {
+          // Handle case where billTransfer room ID is invalid/not found
+          return responseReturn(res, 400, {
+            message: "Invalid Room ID for Bill Transfer.",
+          });
+        }
+        transferRoomId = billTransfer; // Store the ObjectId directly
+      }
+
+      let mainTransaction = await transactionModel.create({
+        transactionNo: UniqueId,
+        debit: debit_party._id,
+        credit: credit_party._id,
+        generatedBy: generatedByName,
+        balance: lastPaid,
+        date: tempDate,
+        orderNo: newReservationId,
+        companyId: companyId,
+        branchId: branchId,
+      });
+
+      let discountTransaction = null;
+      if (Number(discount) > 0) {
+        discountTransaction = await transactionModel.create({
+          transactionNo: UniqueId,
+          debit: discount_party._id,
+          credit: credit_party._id,
+          generatedBy: generatedByName,
+          balance: Number(discount),
+          date: tempDate,
+          orderNo: newReservationId,
+          companyId: companyId,
+          branchId: branchId,
+        });
+      }
+
+      // Use the roomDetails array directly from the frontend payload
+      // Ensure roomDetails is an array and each item has the expected fields
+      if (!Array.isArray(roomDetails) || roomDetails.length === 0) {
+        return responseReturn(res, 400, {
+          message: "Room details are required for the reservation.",
+        });
+      }
+
+      // It's a good practice to validate the structure of each roomDetail here
+      // For example, ensuring roomId is a valid ObjectId, and rates are numbers.
+      const validatedRoomDetails = roomDetails.map((room) => {
+        if (
+          !room.roomId ||
+          !moment.isMoment(moment(room.checkInDate)) ||
+          !moment.isMoment(moment(room.checkOutDate)) ||
+          typeof room.rackRate !== "number" ||
+          typeof room.discountRate !== "number" ||
+          !room.category ||
+          typeof room.dayStay !== "number"
+        ) {
+          throw new Error("Invalid room detail structure provided."); // Or return a specific error message
+        }
+        return {
+          roomId: room.roomId,
+          rackRate: room.rackRate,
+          discountRate: room.discountRate,
+          category: room.category,
+          dayStay: room.dayStay,
+          // If individual checkInDate/checkOutDate are sent for each room in roomDetails, include them here:
+          // checkInDate: moment(room.checkInDate).format("YYYY-MM-DD"),
+          // checkOutDate: moment(room.checkOutDate).format("YYYY-MM-DD"),
+        };
+      });
+
+      const reservationData = {
+        reservationNo: newReservationId,
+        transactionId: mainTransaction._id,
+        residentId: guestId,
+        generatedBy: generatedByName,
+        roomDetails: validatedRoomDetails, // Use the validated roomDetails array
+        // Use others and restaurants directly as they are now arrays from frontend
+        others: others,
+        restaurants: restaurants,
+        totalAmount,
+        totalGuest,
+        discount: Number(discount),
+        finalAmount,
+        due,
+        paidInfo,
+        bookedDate: tempDate,
+        checkInDate: checkInDate,
+        checkOutDate: checkOutDate,
+        source,
+        status,
+        remark,
+        billTransfer: transferRoomId, // Store the ObjectId
+        companyId: companyId,
+        branchId: branchId,
+      };
+
+      let newReservation = await reservationModel.create(reservationData);
+
+      debit_party.balance = Number(debit_party.balance) + lastPaid;
+      await debit_party.save();
+
+      if (discountTransaction) {
+        discount_party.balance =
+          Number(discount_party.balance) + Number(discount);
+        await discount_party.save();
+      }
+
+      credit_party.balance = Number(credit_party.balance) + (totalAmount - due);
+      await credit_party.save();
+
+      // Populate for response - ensure `roomDetails.roomId` is correctly populated
+      newReservation = await reservationModel
+        .findById(newReservation._id)
+        .populate("residentId")
+        .populate({
+          path: "roomDetails.roomId", // Path for array subdocument population
+          populate: {
+            path: "categoryId",
+          },
+        });
+
+      responseReturn(res, 201, {
+        reservation: newReservation,
+        message: "Reservation placed successfully!",
+      });
+    } catch (error) {
+      console.error("Error creating new reservation:", error); // Use console.error
+
+      if (error.name === "CastError" && error.kind === "ObjectId") {
+        return responseReturn(res, 400, {
+          message: "Invalid ID format provided in request.",
+          details: error.message, // Add details for better debugging
+        });
+      }
+      // Handle potential validation errors from Mongoose
+      if (error.name === "ValidationError") {
+        return responseReturn(res, 400, {
+          message: "Validation failed: " + error.message,
+          details: error.errors, // Mongoose validation errors
+        });
+      }
+
+      // Catch the specific error thrown during roomDetails validation
+      if (
+        error.message &&
+        error.message.includes("Invalid room detail structure provided.")
+      ) {
+        return responseReturn(res, 400, {
+          message: error.message,
+        });
+      }
+
+      responseReturn(res, 500, {
+        message: "Server Error: Unable to create new reservation.",
+        details: error.message, // Provide error.message for server-side debugging
+      });
+    }
+  };
+  all_reservations = async (req, res) => {
+    const { id } = req;
+
+    var { companyId } = await ownerModel.findById(id);
+    try {
+      const reservations = await reservationModel
+        .find({ companyId: companyId, status: { $ne: "cancel" } })
+        .populate("residentId")
+        .populate({
+          path: "roomDetails.roomId",
+          populate: {
+            path: "categoryId", // Populate category inside the room
+          },
+        })
+        .sort({ createdAt: -1 });
+      const totalReservations = await reservationModel
+        .find({ companyId: companyId })
+        .countDocuments();
+
+      responseReturn(res, 200, {
+        reservations,
+        totalReservations,
+      });
+    } catch (error) {
+      responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+
+  get_a_reservation = async (req, res) => {
+    const { reservationId } = req.params;
+    try {
+      const reservation = await reservationModel
+        .findById(reservationId)
+        .populate("residentId")
+        .populate({
+          path: "roomDetails.roomId",
+          populate: {
+            path: "categoryId", // Populate category inside the room
+          },
+        });
+      responseReturn(res, 200, {
+        reservation,
+      });
+    } catch (error) {
+      console.log(error.message);
+    }
+  };
+
+  update_reservation_status = async (req, res) => {
+    const { reservationId } = req.params;
+    const { status } = req.body;
+
+    try {
+      const validStatuses = ["will_check", "check_in", "checked_out", "cancel"];
+      if (!validStatuses.includes(status)) {
+        return responseReturn(res, 400, {
+          message: "Invalid status provided.",
+        }); // Using your response utility
+      }
+      const reservationToUpdate = await reservationModel.findById(
+        reservationId
+      );
+
+      // Check if reservation exists before proceeding with any status logic
+      if (!reservationToUpdate) {
+        return responseReturn(res, 404, { message: "Reservation not found." });
+      }
+      const currentStatus = reservationToUpdate.status;
+
+      // Frontend validation rules (backend should also have these for safety)
+      if (currentStatus === "checked_in" && status === "will_check") {
+        return responseReturn(res, 400, {
+          message: "Cannot change status from 'Checked In' to 'Will Check'.",
+        });
+      }
+      if (
+        (currentStatus === "cancel" || currentStatus === "checked_out") &&
+        (status === "checked_in" || status === "will_check")
+      ) {
+        return responseReturn(res, 400, {
+          message: `Cannot change status from '${currentStatus}' to '${status}'. Reservation is already finalized.`,
+        });
+      }
+
+      const tempDate = moment().format("YYYY-MM-DD"); // Current date for new transactions
+
+      // --- Handle checkOutDate based on status ---
+      if (status === "checked_out") {
+        const currentCheckInDate = moment(reservationToUpdate.checkInDate);
+        const today = moment(); // Or moment(Date.now()); both work
+
+        // 1. Check if check-out is attempted before actual check-in date
+        if (currentCheckInDate.isAfter(today, "day")) {
+          return responseReturn(res, 400, {
+            message:
+              "Cannot mark as 'Checked Out': Check-in date is in the future.",
+          });
+        }
+
+        // 2. Check if there's any outstanding balance
+        if (Number(reservationToUpdate.finalAmount) !== 0) {
+          // Using Number() here ensures it's treated as a number
+          return responseReturn(res, 400, {
+            message:
+              "Cannot mark as 'Checked Out': Outstanding balance needs to be cleared.",
+          });
+        }
+        const updatedReservation = await reservationModel.findByIdAndUpdate(
+          reservationId,
+          { checkOutDate: tempDate },
+          { new: true, runValidators: true }
+        );
+      }
+
+      if (status === "cancel") {
+        return responseReturn(res, 400, {
+          message: "Remark is required for cancellation.",
+        });
+      }
+      // --- End of specific check-out logic ---
+
+      // Proceed to update the status
+      const updatedReservation = await reservationModel.findByIdAndUpdate(
+        reservationId,
+        { status: status },
+        { new: true, runValidators: true }
+      );
+
+      // This check for !updatedReservation might be redundant here if reservationToUpdate already exists,
+      // but it's good for robustness in case findByIdAndUpdate fails for another reason (e.g., deleted during the process).
+      if (!updatedReservation) {
+        return responseReturn(res, 404, {
+          message: "Reservation not found after update attempt.",
+        });
+      }
+
+      // Send back a success response
+      responseReturn(res, 200, {
+        message: "Reservation status has been changed!",
+        reservation: updatedReservation, // Optionally send the updated reservation data back
+      });
+    } catch (error) {
+      console.error("Error updating reservation status:", error.message);
+      // Handle invalid MongoDB ID format specifically
+      if (error.kind === "ObjectId") {
+        return responseReturn(res, 400, {
+          message: "Invalid Reservation ID format.",
+        });
+      }
+      responseReturn(res, 500, { message: "Server Error" });
+    }
+  };
+
+  update_reservation = async (req, res) => {
+    const { id, role } = req; // Assuming 'id' is userId/staffId/ownerId from auth middleware
+    const {
+      startDate, // New check-in date from frontend
+      endDate, // New check-out date from frontend
+      roomDetails, // This will now be an array of room objects for the current reservation
+      totalGuest,
+      guestId,
+      totalAmount, // Calculated total amount for the current reservation (after updates)
+      source,
+      others, // This will now be an array of other service objects from frontend
+      restaurants, // This will now be an array of restaurant service objects from frontend
+      due, // Calculated due amount for the current reservation
+      discount, // Calculated discount for the current reservation
+      paidInfo, // This will be the full updated array of payment infos for the current reservation
+      finalAmount, // Calculated final amount for the current reservation
+      status, // New status for the current reservation
+      remark, // New remark for the current reservation
+      billTransfer, // Room ID for bill transfer, if applicable (the ROOM being transferred TO)
+      reservationId, // ID of the reservation being UPDATED (and potentially cancelled)
+    } = req.body;
+
+    let companyId, generatedByName;
+    let createdTransactionIds = []; // To track created transactions for potential rollback
+    let session = null; // For MongoDB transaction
+
+    try {
+      // Start a MongoDB session for transaction (if your MongoDB version supports it and you configure it)
+      // This part is crucial for atomicity. If not using transactions, be aware of data inconsistencies.
+      // session = await mongoose.startSession();
+      // session.startTransaction();
+
+      // --- 1. Determine User Role and Fetch Company/Name ---
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          return responseReturn(res, 404, { message: "Staff not found." });
+        }
+        companyId = staff.companyId;
+        generatedByName = staff.name;
+      } else {
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          return responseReturn(res, 404, { message: "Owner not found." });
+        }
+        companyId = owner.companyId;
+        generatedByName = owner.name;
+      }
+
+      if (!companyId) {
+        return responseReturn(res, 400, { message: "Company ID not found." });
+      }
+
+      const tempDate = moment().format("YYYY-MM-DD"); // Current server date for new transactions/cancellation
+
+      // --- Fetch Financial Parties ---
+      const [credit_party, discount_party, debit_party] = await Promise.all([
+        partyModel.findOne({
+          accountType: "hot_sales_account",
+          under: "hotel",
+          companyId: companyId,
+        }),
+        partyModel.findOne({
+          accountType: "discount",
+          under: "hotel",
+          companyId: companyId,
+        }),
+        partyModel.findOne({
+          accountType: "cash_hotel",
+          under: "hotel",
+          companyId: companyId,
+        }),
+      ]);
+
+      if (!credit_party || !debit_party || !discount_party) {
+        // await session.abortTransaction(); // Abort transaction on error
+        return responseReturn(res, 500, {
+          message:
+            "Required financial accounts not found. Please set up 'hot_sales_account', 'discount', and 'cash_hotel' parties.",
+        });
+      }
+
+      // Fetch the reservation being updated/cancelled
+      const existingReservation = await reservationModel
+        .findById(reservationId)
+        .populate("roomDetails.roomId"); // Populate to get room names/categories if needed
+
+      if (!existingReservation) {
+        // await session.abortTransaction(); // Abort transaction on error
+        return responseReturn(res, 404, { message: "Reservation not found." });
+      }
+
+      const currentStatus = existingReservation.status;
+
+      // --- Frontend-like Status Transition Validation (Backend safety) ---
+      if (currentStatus === "checked_in" && status === "will_check") {
+        // await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message: "Cannot change status from 'Checked In' to 'Will Check'.",
+        });
+      }
+      if (
+        (currentStatus === "cancel" || currentStatus === "checked_out") &&
+        (status === "checked_in" || status === "will_check")
+      ) {
+        // await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message: `Cannot change status from '${currentStatus}' to '${status}'. Reservation is already finalized.`,
+        });
+      }
+
+      // --- Handle checkOutDate based on status ---
+      let finalCheckOutDate; // Declared here
+      if (status === "checked_out" || status === "cancel") {
+        finalCheckOutDate = tempDate; // Assigned here
+      } else {
+        finalCheckOutDate = moment(endDate).format("YYYY-MM-DD"); // Assigned here
+      }
+      const finalCheckInDate = moment(startDate).format("YYYY-MM-DD");
+
+      // --- BILL TRANSFER LOGIC ---
+      if (
+        billTransfer &&
+        billTransfer !== "null" &&
+        billTransfer !== "undefined"
+      ) {
+        // Check if billTransfer is provided
+        // Validate billTransfer is a valid ObjectId
+        if (!mongoose.Types.ObjectId.isValid(billTransfer)) {
+          // await session.abortTransaction();
+          return responseReturn(res, 400, {
+            message: "Invalid Room ID provided for Bill Transfer.",
+          });
+        }
+
+        // 1. Find the target reservation for the bill transfer room on overlapping dates
+        // Find a reservation for the 'billTransfer' room that is active on the current reservation's check-in date
+        const targetReservation = await reservationModel
+          .findOne({
+            "roomDetails.roomId": billTransfer, // Check if the room exists in roomDetails
+            companyId: companyId,
+            status: { $nin: ["cancel", "checked_out"] }, // Target must be active
+            checkInDate: { $lte: moment(endDate).format("YYYY-MM-DD") }, // Target starts on or before current reservation's new end date
+            checkOutDate: { $gt: moment(startDate).format("YYYY-MM-DD") }, // Target ends after current reservation's new start date
+            _id: { $ne: existingReservation._id }, // Cannot transfer to self
+          })
+          .populate("roomDetails.roomId"); // Populate to get details for logging/response
+
+        if (!targetReservation) {
+          // await session.abortTransaction();
+          return responseReturn(res, 400, {
+            message:
+              "No active reservation found for the selected Bill Transfer Room on the overlapping dates.",
+          });
+        }
+
+        // --- Accumulate data from existingReservation to targetReservation ---
+        console.log(
+          `Performing bill transfer from Reservation ${existingReservation.reservationNo} to ${targetReservation.reservationNo}`
+        );
+
+        // a. Transfer room details
+        const roomsToTransfer = existingReservation.roomDetails.map(
+          (detail) => ({
+            roomId: detail.roomId._id, // Ensure it's the ID
+            rackRate: detail.rackRate,
+            discountRate: detail.discountRate,
+            category: detail.roomId.categoryId?.name || detail.category, // Use populated name or original category
+            dayStay: detail.dayStay,
+          })
+        );
+        targetReservation.roomDetails.push(...roomsToTransfer);
+
+        // b. Accumulate financial amounts (totalAmount, discount, due, finalAmount)
+        targetReservation.totalAmount =
+          (Number(targetReservation.totalAmount) || 0) +
+          (Number(existingReservation.totalAmount) || 0);
+        targetReservation.discount =
+          (Number(targetReservation.discount) || 0) +
+          (Number(existingReservation.discount) || 0);
+        targetReservation.due =
+          (Number(targetReservation.due) || 0) +
+          (Number(existingReservation.due) || 0);
+        targetReservation.finalAmount =
+          (Number(targetReservation.finalAmount) || 0) +
+          (Number(existingReservation.finalAmount) || 0);
+
+        // c. Transfer paidInfo
+        if (
+          existingReservation.paidInfo &&
+          existingReservation.paidInfo.length > 0
+        ) {
+          targetReservation.paidInfo.push(
+            ...existingReservation.paidInfo.map((p) => ({
+              paid: p.paid,
+              paidDetails: p.paidDetails,
+              currentDate: p.currentDate || new Date(), // Ensure date is present
+            }))
+          );
+        }
+
+        // d. Transfer other/restaurant charges (assuming single items in array as per frontend payload)
+        if (
+          existingReservation.others &&
+          existingReservation.others.length > 0
+        ) {
+          targetReservation.others[0].otherAmount =
+            (Number(targetReservation.others[0]?.otherAmount) || 0) +
+            (Number(existingReservation.others[0]?.otherAmount) || 0);
+          targetReservation.others[0].other =
+            targetReservation.others[0]?.other ||
+            existingReservation.others[0]?.other; // Keep existing or use transferred
+        }
+        if (
+          existingReservation.restaurants &&
+          existingReservation.restaurants.length > 0
+        ) {
+          targetReservation.restaurants[0].restaurantAmount =
+            (Number(targetReservation.restaurants[0]?.restaurantAmount) || 0) +
+            (Number(existingReservation.restaurants[0]?.restaurantAmount) || 0);
+          targetReservation.restaurants[0].restaurant =
+            targetReservation.restaurants[0]?.restaurant ||
+            existingReservation.restaurants[0]?.restaurant;
+        }
+
+        // Save the updated target reservation
+        await targetReservation.save(); // Pass { session } if using transactions
+
+        // --- Mark the existingReservation (the one being updated) as 'cancel' ---
+        existingReservation.status = "cancel";
+        existingReservation.remark = `Bill transferred to Reservation ${
+          targetReservation.reservationNo
+        } (${
+          targetReservation.roomDetails[0]?.roomId?.name || "Unknown Room"
+        }) on ${tempDate}. Original remark: ${remark || "N/A"}`;
+        existingReservation.checkOutDate = tempDate; // Set checkout date to now for cancellation
+
+        // Clear financial amounts for the cancelled reservation
+        existingReservation.totalAmount = 0;
+        existingReservation.discount = 0;
+        existingReservation.due = 0;
+        existingReservation.finalAmount = 0;
+        existingReservation.paidInfo = []; // Clear paid info
+
+        await existingReservation.save(); // Pass { session } if using transactions
+
+        // Send a specific response for bill transfer success
+        // await session.commitTransaction();
+        return responseReturn(res, 200, {
+          message: `Bill successfully transferred from Reservation ${existingReservation.reservationNo} to ${targetReservation.reservationNo}. Original reservation cancelled.`,
+          transferredFromReservation: existingReservation, // Return the cancelled reservation
+          transferredToReservation: targetReservation, // Return the updated target reservation
+        });
+      }
+      // --- END BILL TRANSFER LOGIC ---
+
+      // This part runs ONLY IF NO BILL TRANSFER IS PERFORMED
+      // Calculate the difference in paid amount for current reservation update
+      const previousTotalPaid =
+        existingReservation.paidInfo?.reduce((sum, p) => sum + p.paid, 0) || 0;
+      const currentTotalPaidInRequest = paidInfo.reduce(
+        (sum, p) => sum + p.paid,
+        0
+      );
+      const newPaidAmountInThisRequest =
+        currentTotalPaidInRequest - previousTotalPaid;
+
+      const UniqueId = Date.now().toString(36).toUpperCase(); // Unique ID for transactions
+
+      // --- Transaction Management for standard update ---
+      let mainTransaction = null;
+      let discountTransaction = null;
+      let orderNoForTransactions = existingReservation.reservationNo; // Use existing reservation number
+
+      // Create a new transaction only if there's a new payment
+      if (newPaidAmountInThisRequest > 0) {
+        mainTransaction = await transactionModel.create([
+          {
+            // Use array syntax for transactions, if needed, or just single create
+            transactionNo: UniqueId + "-PAY",
+            debit: debit_party._id,
+            credit: credit_party._id,
+            generatedBy: generatedByName,
+            balance: Number(newPaidAmountInThisRequest),
+            date: tempDate,
+            orderNo: orderNoForTransactions,
+            companyId: companyId,
+          },
+        ]); // Pass { session } if using transactions
+        createdTransactionIds.push(mainTransaction[0]._id); // If using array syntax for create
+      }
+
+      // Create discount transaction only if discount amount has changed and is positive
+      if (
+        Number(discount) > 0 &&
+        Number(discount) !== Number(existingReservation.discount || 0)
+      ) {
+        const discountDifference =
+          Number(discount) - Number(existingReservation.discount || 0);
+
+        if (discountDifference !== 0) {
+          discountTransaction = await transactionModel.create([
+            {
+              transactionNo: UniqueId + "-DISCOUNT",
+              debit: discount_party._id,
+              credit: credit_party._id,
+              generatedBy: generatedByName,
+              balance: Math.abs(discountDifference),
+              date: tempDate,
+              orderNo: orderNoForTransactions,
+              companyId: companyId,
+            },
+          ]); // Pass { session } if using transactions
+          createdTransactionIds.push(discountTransaction[0]._id); // If using array syntax for create
+        }
+      }
+
+      // --- Prepare Update Object for Reservation ---
+      const reservationUpdateFields = {
+        residentId: guestId,
+        totalGuest: Number(totalGuest),
+        source,
+        remark,
+        billTransfer: billTransfer || null,
+        status,
+
+        checkInDate: moment(startDate).format("YYYY-MM-DD"),
+        checkOutDate: finalCheckOutDate, // Use the potentially updated finalCheckOutDate
+
+        roomDetails: roomDetails.map((roomDet) => ({
+          roomId: roomDet.roomId,
+          rackRate: Number(roomDet.rackRate),
+          discountRate: Number(roomDet.discountRate),
+          category: roomDet.category,
+          dayStay: Number(roomDet.dayStay),
+        })),
+
+        others:
+          Array.isArray(others) && others.length > 0
+            ? [
+                {
+                  other: others[0].other || "",
+                  otherAmount: Number(others[0].otherAmount) || 0,
+                },
+              ]
+            : [{ other: "", otherAmount: 0 }],
+        restaurants:
+          Array.isArray(restaurants) && restaurants.length > 0
+            ? [
+                {
+                  restaurant: restaurants[0].restaurant || "",
+                  restaurantAmount:
+                    Number(restaurants[0].restaurantAmount) || 0,
+                },
+              ]
+            : [{ restaurant: "", restaurantAmount: 0 }],
+
+        totalAmount: Number(totalAmount),
+        discount: Number(discount),
+        due: Number(due),
+        finalAmount: Number(finalAmount),
+        paidInfo: paidInfo,
+      };
+
+      // If status is cancel, remark is required
+      if (status === "cancel") {
+        if (!remark || typeof remark !== "string" || remark.trim() === "") {
+          // await session.abortTransaction();
+          return responseReturn(res, 400, {
+            message: "Remark is required for cancellation.",
+          });
+        }
+      }
+
+      // Status-specific validation for 'checked_out'
+      if (status === "checked_out") {
+        const currentCheckInDate = moment(existingReservation.checkInDate);
+        const today = moment();
+
+        if (currentCheckInDate.isAfter(today, "day")) {
+          // await session.abortTransaction();
+          return responseReturn(res, 400, {
+            message:
+              "Cannot mark as 'Checked Out': Check-in date is in the future.",
+          });
+        }
+        if (Number(finalAmount) !== 0) {
+          // await session.abortTransaction();
+          return responseReturn(res, 400, {
+            message:
+              "Cannot mark as 'Checked Out': Outstanding balance needs to be cleared.",
+          });
+        }
+        // When checking out, ensure checkOutDate is now
+        reservationUpdateFields.checkOutDate = tempDate;
+      }
+
+      // --- Update Reservation in Database ---
+      let updatedReservation = await reservationModel.findByIdAndUpdate(
+        reservationId,
+        reservationUpdateFields,
+        { new: true, runValidators: true } // { session } if using transactions
+      );
+
+      if (!updatedReservation) {
+        // await session.abortTransaction();
+        return responseReturn(res, 404, {
+          message: "Reservation not found after update attempt.",
+        });
+      }
+
+      // --- Update Party Balances (after successful reservation update) ---
+      // These updates happen only if a transaction was created for new payments or discount changes.
+      if (newPaidAmountInThisRequest > 0) {
+        debit_party.balance =
+          Number(debit_party.balance) + newPaidAmountInThisRequest;
+        await debit_party.save(); // { session } if using transactions
+      }
+
+      if (discountTransaction) {
+        // The discount transaction already debits discount_party. Here we ensure it's saved.
+        // Note: The previous logic was `Math.abs(Number(discount))`, which would keep increasing.
+        // The `balance` of `discount_party` should ideally be the sum of all discounts *given*.
+        // If `discountTransaction` was created for `discountDifference`, then that's the amount to add.
+        // For simplicity, let's assume `discountTransaction`'s balance reflects the change.
+        discount_party.balance =
+          Number(discount_party.balance) +
+          Number(discountTransaction[0]?.balance || 0);
+        await discount_party.save(); // { session } if using transactions
+      }
+
+      // Credit party balance is implicitly updated by the `credit` fields in transactionModel.create.
+      // If your transaction model doesn't handle party balance updates automatically via hooks,
+      // you would need to add an explicit `credit_party.balance` update here based on `newPaidAmountInThisRequest`
+      // or other revenue-generating changes. For robust accounting, this needs careful design.
+
+      // --- Populate the newly created reservation for the response ---
+      updatedReservation = await reservationModel
+        .findById(updatedReservation._id)
+        .populate("residentId")
+        .populate({
+          path: "roomDetails.roomId",
+          populate: { path: "categoryId" },
+        });
+
+      // await session.commitTransaction(); // Commit transaction on success
+      responseReturn(res, 200, {
+        reservation: updatedReservation,
+        message: "Reservation updated successfully",
+      });
+    } catch (error) {
+      console.error("Error in update_reservation:", error);
+
+      // if (session) {
+      //     await session.abortTransaction(); // Abort transaction on any error
+      //     console.warn("MongoDB transaction aborted due to error.");
+      // }
+
+      // Basic Rollback: Attempt to delete any transactions created in this failed update
+      if (createdTransactionIds.length > 0) {
+        console.warn(
+          "Attempting to roll back transactions due to error:",
+          createdTransactionIds
+        );
+        try {
+          await transactionModel.deleteMany({
+            _id: { $in: createdTransactionIds },
+          });
+        } catch (rollbackError) {
+          console.error("Error during transaction rollback:", rollbackError);
+        }
+      }
+
+      if (error.name === "CastError" && error.kind === "ObjectId") {
+        return responseReturn(res, 400, {
+          message: "Invalid ID format provided in request.",
+          details: error.message,
+        });
+      }
+      // Handle Mongoose validation errors
+      if (error.name === "ValidationError") {
+        return responseReturn(res, 400, {
+          message: error.message,
+          details: error.errors,
+        });
+      }
+      responseReturn(res, 500, {
+        message: "Server Error: Unable to update reservation.",
+        details: error.message,
+      });
+    } finally {
+      // if (session) {
+      //     session.endSession(); // End the session regardless of success or failure
+      // }
+    }
+  };
+  // Or however you export your controllers
+
+  getReservationsByDateAndStatus = async (req, res) => {
+    const { id, role } = req; // Authenticated user's ID and role
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ message: "Date is required." });
+    }
+
+    const selectedDate = new Date(date);
+    var inDate = moment(selectedDate).format("YYYY-MM-DD");
+
+    const nextDay = new Date(selectedDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    var outDate = moment(nextDay).format("YYYY-MM-DD");
+    let companyId;
+
+    try {
+      // 1. Determine companyId
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          return res.status(404).json({ message: "Staff not found." });
+        }
+        companyId = staff.companyId;
+      } else {
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          return res.status(404).json({ message: "Owner not found." });
+        }
+        companyId = owner.companyId;
+      }
+
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID not found." });
+      }
+
+      // 2. Query reservations
+      const reservations = await reservationModel
+        .find({
+          status: { $ne: "cancel" },
+          checkInDate: { $lt: outDate },
+          checkOutDate: { $gte: inDate },
+          companyId: companyId,
+        })
+        .populate({
+          path: "roomDetails.roomId", // Ensure room belongs to user's company
+        })
+        .populate("residentId")
+        .lean();
+      // 3. Filter out any reservation where roomId was not matched
+      const validReservations = reservations.filter(
+        (res) => res.roomDetails.roomId !== null
+      );
+
+      res.status(200).json({
+        message: "Reservations fetched",
+        reservations: validReservations,
+      });
+    } catch (err) {
+      console.error("Reservation fetch error:", err);
+      res.status(500).json({
+        message: "Failed to fetch reservations",
+        error: err.message,
+      });
+    }
+  };
+
+  getReservationsByDateAndStatusStayView = async (req, res) => {
+    const { id, role } = req; // Authenticated user's ID and role
+    const { startDate, numberOfDays } = req.query; // Expecting startDate and numberOfDays
+
+    if (!startDate || !numberOfDays) {
+      return res
+        .status(400)
+        .json({ message: "Start date and number of days are required." });
+    }
+
+    // Define the full date range for the query
+    const rangeStartDate = moment(startDate).startOf("day"); // Inclusive start
+    const rangeEndDate = moment(startDate)
+      .add(parseInt(numberOfDays), "days")
+      .startOf("day"); // Exclusive end
+    const finalEndDate = moment(rangeEndDate).format("YYYY-MM-DD");
+    const finalStartDate = moment(rangeStartDate).format("YYYY-MM-DD");
+    if (!rangeStartDate.isValid() || !rangeEndDate.isValid()) {
+      return res.status(400).json({ message: "Invalid date format provided." });
+    }
+
+    let companyId;
+
+    try {
+      // 1. Determine companyId
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          return res.status(404).json({ message: "Staff not found." });
+        }
+        companyId = staff.companyId;
+      } else {
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          return res.status(404).json({ message: "Owner not found." });
+        }
+        companyId = owner.companyId;
+      }
+
+      if (!companyId) {
+        return res.status(400).json({ message: "Company ID not found." });
+      }
+      // 2. Query reservations that overlap with the given date range
+      const reservations = await reservationModel
+        .find({
+          companyId: companyId,
+          status: { $ne: "cancel" }, // Exclude 'cancel' status
+          // Reservation overlaps with the range if:
+          // (its checkInDate is before the rangeEndDate) AND (its checkOutDate is after or on the rangeStartDate)
+          checkInDate: { $lte: finalEndDate }, // Reservation starts before the end of the range
+          checkOutDate: { $gte: finalStartDate }, // Reservation ends after or on the start of the range
+        })
+        .populate({
+          path: "roomDetails.roomId", // Populate room details within roomDetails array
+        })
+        .populate("residentId") // Populate guest details
+        .lean(); // Use lean() for faster query results if you don't need Mongoose documents
+      // 3. Filter out any reservation where roomDetails.roomId was not matched
+      // This can happen if a room was deleted or ID is bad.
+      const totalReservations = await reservationModel
+        .find({
+          companyId: companyId,
+          status: { $ne: "cancel" }, // Exclude 'cancel' status
+          // Reservation overlaps with the range if:
+          // (its checkInDate is before the rangeEndDate) AND (its checkOutDate is after or on the rangeStartDate)
+          checkInDate: { $lte: finalEndDate }, // Reservation starts before the end of the range
+          checkOutDate: { $gte: finalStartDate }, // Reservation ends after or on the start of the range
+        })
+        .countDocuments();
+      console.log(totalReservations);
+      const validReservations = reservations.filter((res) =>
+        res.roomDetails?.some((detail) => detail.roomId !== null)
+      );
+
+      res.status(200).json({
+        message: "Reservations fetched",
+        reservations: validReservations,
+      });
+    } catch (err) {
+      console.error("Reservation fetch error:", err);
+      res.status(500).json({
+        message: "Failed to fetch reservations",
+        error: err.message,
+      });
     }
   };
 }

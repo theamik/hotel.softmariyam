@@ -323,10 +323,20 @@ class foodController {
     }
   };
   add_guest = async (req, res) => {
-    mulla;
+    const { id } = req;
 
-    const { name, address, mobile, description, date, status } = req.body;
-    var tempDate = moment(date).format();
+    const { companyId } = await ownerModel.findById(id);
+    const { name, address, mobile, description, date, status, under } =
+      req.body;
+    if (date) {
+      var tempDate = moment(date).format();
+    } else {
+      var tempDate = moment(Date.now()).format();
+    }
+    if (!name || !address || !mobile || !description) {
+      responseReturn(res, 404, { error: "Please fill guest information!" });
+      return;
+    }
     try {
       const guest = await guestModel.create({
         name,
@@ -336,6 +346,7 @@ class foodController {
         date: tempDate,
         status,
         companyId: companyId,
+        under: under,
       });
 
       responseReturn(res, 201, {
@@ -343,21 +354,19 @@ class foodController {
         message: "Guest added successfully",
       });
     } catch (error) {
+      console.log(error);
       responseReturn(res, 500, { error: "Internal server error" });
     }
   };
 
   update_guest = async (req, res) => {
-    const { name, address, mobile, description, date, status, guestId } =
-      req.body;
-    var tempDate = moment(date).format();
+    const { name, address, mobile, description, status, guestId } = req.body;
     try {
       const guests = await guestModel.findByIdAndUpdate(guestId, {
         name,
         address,
         mobile,
         description,
-        date: tempDate,
         status,
       });
 
@@ -376,10 +385,28 @@ class foodController {
     const { companyId } = await ownerModel.findById(id);
     try {
       const guests = await guestModel
-        .find({ companyId: companyId })
+        .find({ companyId: companyId, under: "restaurant" })
         .sort({ updatedAt: -1 });
       const totalGuest = await guestModel
-        .find({ companyId: companyId })
+        .find({ companyId: companyId, under: "hotel" })
+        .countDocuments();
+      responseReturn(res, 200, { totalGuest, guests });
+    } catch (error) {
+      console.log(error.message);
+      responseReturn(res, 500, { error: "Internal server error" });
+    }
+  };
+
+  get_hotel_guests = async (req, res) => {
+    const { id } = req;
+
+    const { companyId } = await ownerModel.findById(id);
+    try {
+      const guests = await guestModel
+        .find({ companyId: companyId, under: "hotel" })
+        .sort({ updatedAt: -1 });
+      const totalGuest = await guestModel
+        .find({ companyId: companyId, under: "hotel" })
         .countDocuments();
       responseReturn(res, 200, { totalGuest, guests });
     } catch (error) {
