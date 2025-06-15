@@ -585,9 +585,7 @@ function ReservationForm() {
       toast.success(successMessage);
       dispatch(messageClear());
       // For new reservation, navigate to invoice, for edit, just show success
-      if (!isEditMode) {
-        navigate("/hotel/invoice"); // Navigate to invoice with new reservation data
-      }
+      window.location.reload();
     }
   }, [successMessage, errorMessage, dispatch, navigate, isEditMode]);
 
