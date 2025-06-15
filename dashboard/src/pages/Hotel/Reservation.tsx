@@ -574,6 +574,14 @@ function ReservationForm() {
       }
     }
   }, [isEditMode, reservation, guests, rooms, bookedRooms]); // Added bookedRooms to dependency
+  useEffect(() => {
+    if (selectedBookedRoom) {
+      toast.error(
+        "You need to reservation first or going to group reservation!"
+      );
+      setSelectedBookedRoom(null);
+    }
+  }, [selectedBookedRoom]);
 
   // Handle success/error messages
   useEffect(() => {

@@ -44,9 +44,15 @@ function ReservationForm() {
     roomId: initialRoomIdFromQuery,
     checkInDate: initialCheckInDateFromQuery,
   } = queryString.parse(location.search);
-  console.log(paramReservationId);
   const isEditMode = !!paramReservationId;
   // Get initial room and check-in date from query parameters for new reservation creation
+  useEffect(() => {
+    first;
+
+    return () => {
+      second;
+    };
+  }, [third]);
 
   // Redux state
   const { guests, reservation, guest, errorMessage, successMessage } =
