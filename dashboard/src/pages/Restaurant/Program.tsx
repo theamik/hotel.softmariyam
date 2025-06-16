@@ -561,7 +561,7 @@ function ProgramForm() {
             <div className="flex flex-col gap-4">
               <div>
                 <label className="block text-black dark:text-white mb-2">
-                  Decoration
+                  Others Charge
                 </label>
                 <input
                   name="decoration"
@@ -569,7 +569,7 @@ function ProgramForm() {
                   onChange={handleProgramInputChange}
                   type="number"
                   min="0"
-                  placeholder="Decoration charge"
+                  placeholder="Others charge"
                   className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
               </div>

@@ -45,9 +45,9 @@ const StayView = () => {
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case "will_check":
-        return "bg-green-500";
-      case "checked_in":
         return "bg-blue-500";
+      case "checked_in":
+        return "bg-green-500";
       case "checked_out":
         return "bg-orange-400";
       case "out_of_order":
@@ -57,7 +57,7 @@ const StayView = () => {
       case "complimentary":
         return "bg-yellow-400";
       case "cancel":
-        return "bg-pink-500";
+        return "bg-blue-500";
       default:
         return "bg-gray-200";
     }
@@ -118,8 +118,8 @@ const StayView = () => {
         />
         <h2 className="text-xl font-semibold">Stay View</h2>
         <div className="flex gap-2 text-sm">
-          <LegendDot color="bg-green-500" label="Assigned" />
-          <LegendDot color="bg-blue-500" label="Checked In" />
+          <LegendDot color="bg-blue-500" label="Assigned" />
+          <LegendDot color="bg-green-500" label="Checked In" />
           <LegendDot color="bg-orange-400" label="Checked Out" />
         </div>
       </div>
@@ -223,7 +223,9 @@ const StayView = () => {
                           <div
                             className={`h-1/2 ${getStatusColor(checkOutRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-t-full`}
                           >
-                            <span>{checkOutRes.residentId?.name}</span>
+                            <span>
+                              {checkOutRes.residentId?.name.slice(0, 10)}
+                            </span>
                             <div className="flex gap-1 ml-2">
                               <button
                                 onClick={(e) => {
@@ -254,7 +256,9 @@ const StayView = () => {
                           <div
                             className={`h-1/2 ${getStatusColor(checkInRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-b-full`}
                           >
-                            <span>{checkInRes.residentId?.name}</span>
+                            <span>
+                              {checkInRes.residentId?.name.slice(0, 10)}
+                            </span>
                             <div className="flex gap-1 ml-2">
                               <button
                                 onClick={(e) => {
@@ -286,7 +290,9 @@ const StayView = () => {
                             <div
                               className={`h-1/2 ${getStatusColor(checkOutRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-t-full`}
                             >
-                              <span>{checkOutRes.residentId?.name}</span>
+                              <span>
+                                {checkOutRes.residentId?.name.slice(0, 10)}
+                              </span>
                               <div className="flex gap-1 ml-2">
                                 <button
                                   onClick={(e) => {
@@ -315,7 +321,9 @@ const StayView = () => {
                             <div
                               className={`h-1/2 ${getStatusColor(checkInRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-b-full`}
                             >
-                              <span>{checkInRes.residentId?.name}</span>
+                              <span>
+                                {checkInRes.residentId?.name.slice(0, 10)}
+                              </span>
                               <div className="flex gap-1 ml-2">
                                 <button
                                   onClick={(e) => {
@@ -347,7 +355,7 @@ const StayView = () => {
                           <div
                             className={`h-full ${getStatusColor(fullRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-full`}
                           >
-                            <span>{fullRes.residentId?.name}</span>
+                            <span>{fullRes.residentId?.name.slice(0, 10)}</span>
                             <div className="flex gap-1 ml-2">
                               <button
                                 onClick={(e) => {
@@ -384,7 +392,7 @@ const StayView = () => {
         <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
           <div className="bg-white rounded-lg shadow-lg p-6 w-80">
             <h2 className="text-lg font-bold mb-2">
-              {popupRes ? popupRes.residentId?.name : "Available"}
+              {popupRes ? popupRes.residentId?.name.slice(0, 10) : "Available"}
             </h2>
             <p className="text-sm text-gray-600 mb-4">
               {popupDate.format("dddd, MMM D")}
@@ -402,7 +410,7 @@ const StayView = () => {
                     onClick={() =>
                       editReservation(popupRes._id, popupRoom._id, popupDate)
                     }
-                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-blue-600"
                   >
                     Edit
                   </button>
@@ -411,7 +419,7 @@ const StayView = () => {
               {popupType === "checkout" && (
                 <button
                   onClick={() => newReservation(popupRoom!, popupDate!)}
-                  className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                  className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-green-600"
                 >
                   New Booking
                 </button>
@@ -419,7 +427,7 @@ const StayView = () => {
               {popupType === "available" && (
                 <button
                   onClick={() => newReservation(popupRoom!, popupDate!)}
-                  className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                  className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-green-600"
                 >
                   New Booking
                 </button>

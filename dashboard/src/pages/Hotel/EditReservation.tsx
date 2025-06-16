@@ -585,7 +585,6 @@ function ReservationForm() {
     if (successMessage) {
       toast.success(successMessage);
       dispatch(messageClear()); // Navigate to invoice with new reservation data
-      window.location.reload();
     }
   }, [successMessage, errorMessage, dispatch, navigate, isEditMode]);
 
