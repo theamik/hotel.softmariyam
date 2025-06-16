@@ -36,12 +36,9 @@ const LoremModal: React.FC<{ modal: typeof BasicModal }> = ({ modal }) => {
         address,
         mobile,
         description,
-        date: startDate,
-        status: selectedStatus.value,
         under: "restaurant",
       })
     );
-    dispatch(guests_get());
     params.delete("modal");
     setParams(params);
   };

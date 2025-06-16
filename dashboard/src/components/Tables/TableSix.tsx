@@ -27,16 +27,13 @@ const TableSix = () => {
   };
 
   const editProgram = (programId) => {
-    dispatch(get_a_program(programId));
-    setTimeout(() => {
-      navigate("/restaurant/program");
-    }, 500);
+    navigate(`/restaurant/program?programId=${programId}`);
   };
   const currentDate = moment(new Date()).format("LL");
 
   const cancelProgram = (programId, date) => {
     const newDate = moment(date).format("LL");
-    if (newDate === currentDate) {
+    if (newDate < currentDate) {
       toast.error("Cancellation Date Over");
     } else {
       dispatch(cancel_program(programId));

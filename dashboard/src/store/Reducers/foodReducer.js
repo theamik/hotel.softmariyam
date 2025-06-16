@@ -187,7 +187,7 @@ export const foodSlice = createSlice({
       })
       .addCase(guest_add.fulfilled, (state, action) => {
         state.loader = false;
-        state.guest = action.payload.guest;
+        state.successMessage = action.payload.message;
       })
       .addCase(guest_add.rejected, (state, action) => {
         state.loader = false;
@@ -245,8 +245,6 @@ export const foodSlice = createSlice({
       .addCase(table_update.fulfilled, (state, action) => {
         state.loader = false;
         state.successMessage = action.payload.message;
-        state.table = "";
-        state.tables = action.payload.tables;
       })
       .addCase(table_update.rejected, (state, action) => {
         state.loader = false;

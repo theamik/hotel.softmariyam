@@ -1,195 +1,349 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Select from "react-select";
-import { Link, useNavigate } from "react-router-dom";
-import moment from "moment";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useDispatch, useSelector } from "react-redux";
-import { foods_get, guests_get } from "../../store/Actions/foodAction";
-import { new_program, update_program } from "../../store/Actions/orderAction";
+import {
+  foods_get,
+  guests_get,
+  guest_add, // Import guest_add action
+  // Assuming you have an action to get a single guest by ID if needed for deeper guest update
+} from "../../store/Actions/foodAction"; // Ensure these actions are in foodAction
+import {
+  new_program,
+  update_program,
+  get_a_program,
+} from "../../store/Actions/orderAction";
 import toast from "react-hot-toast";
-import { messageClear } from "../../store/Reducers/orderReducer";
+import { messageClear } from "../../store/Reducers/orderReducer"; // Assuming messageClear is for orderReducer
+import { validatePhoneNumber } from "../../utils/validations";
+import queryString from "query-string"; // Import validation utility
 
-function Program() {
-  const [selectedOption, setSelectedOption] = useState();
-  const [selectedGuest, setSelectedGuest] = useState();
-  const [startDate, setStartDate] = useState();
-  const [type, setType] = useState();
-  const [season, setSeason] = useState();
-  const [hall, setHall] = useState();
-  const [reference, setReference] = useState();
-  const [totalGuest, setTotalGuest] = useState();
-  const [perHead, setPerHead] = useState();
-  const [amount, setAmount] = useState();
-  const [decoration, setDecoration] = useState(0);
-  const [hallCharge, setHallCharge] = useState(0);
-  const [service, setService] = useState(0);
-  const [newPaid, setPaid] = useState(0);
-  const [paidDetails, setPaidDetails] = useState();
-  const [paidInfo, setPaidInfo] = useState([]);
-  const [discount, setDiscount] = useState(0);
-  const [due, setDue] = useState();
-  const [finalAmount, setFinalAmount] = useState();
-  const [foodInfo, setFoodInfo] = useState([]);
-  const { guests, foods } = useSelector((state) => state?.food);
-  const { errorMessage, successMessage, program } = useSelector(
-    (state) => state?.order
+function ProgramForm() {
+  // Get reservation ID from URL path
+  const location = useLocation(); // To parse query params for initial room/date selection in new mode
+
+  // Determine if it's edit mode or new reservation mode
+  const { programId: paramProgramId } = queryString.parse(location.search);
+  const isEditMode = !!paramProgramId;
+
+  // Redux state
+  const {
+    guests,
+    foods,
+    guest: currentGuestDetails,
+  } = useSelector((state) => state.food); // Renamed `guest` to `currentGuestDetails` to avoid confusion with `selectedGuest`
+  const { errorMessage, successMessage, program, loader } = useSelector(
+    (state) => state.order
   );
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Consolidated form data for Program details
+  const [programFormData, setProgramFormData] = useState({
+    programType: "",
+    season: "",
+    hall: "",
+    reference: "",
+    totalGuest: "",
+    perHead: "",
+    decoration: 0,
+    hallCharge: 0,
+    service: 0,
+    paidDetails: "",
+    newPaidAmount: 0,
+    discount: 0,
+    remark: "",
+  });
+
+  // Separate form data for Guest details (for the Add Guest section)
+  const [guestFormData, setGuestFormData] = useState({
+    name: "",
+    address: "",
+    mobile: "",
+    description: "",
+  });
+
+  // State for calculated values
+  const [calculatedAmounts, setCalculatedAmounts] = useState({
+    amount: 0,
+    finalAmount: 0,
+    due: 0,
+  });
+
+  // Date state
+  const [programDate, setProgramDate] = useState(new Date());
+
+  // Dropdown selections (React-Select format)
+  const [selectedGuest, setSelectedGuest] = useState(null);
+  const [selectedFoodItems, setSelectedFoodItems] = useState([]);
+
+  // Effect to fetch initial data (guests and foods) and program data for edit mode
   useEffect(() => {
     dispatch(guests_get());
     dispatch(foods_get());
-  }, [dispatch]);
 
-  const guestArray = guests.map((el) => ({
-    value: el["_id"],
-    label: el["name"],
-  }));
+    if (isEditMode && paramProgramId) {
+      dispatch(get_a_program(paramProgramId)); // Fetch existing program details
+    }
+  }, [dispatch, isEditMode, paramProgramId]);
 
+  // Effect to populate form when program data is fetched in edit mode
   useEffect(() => {
-    const guestArray = guests.map((el) => ({
-      value: el["_id"],
-      label: el["name"],
+    if (isEditMode && program) {
+      setProgramDate(new Date(program.programDate));
+      setProgramFormData({
+        programType: program.programType || "",
+        season: program.season || "",
+        hall: program.hall || "",
+        reference: program.reference || "",
+        totalGuest: program.totalGuest || "",
+        perHead: program.perHead || "",
+        decoration: program.decoration || 0,
+        hallCharge: program.hallCharge || 0,
+        service: program.service || 0,
+        paidDetails: "",
+        newPaidAmount: 0,
+        discount: program.discount || 0,
+        remark: program.remark || "",
+      });
+
+      // Set selected guest in dropdown
+      if (program.guestId) {
+        setSelectedGuest({
+          value: program.guestId._id,
+          label: program.guestId.name,
+        });
+      }
+
+      // Populate guestFormData if program.guestId exists
+      if (program.guestId) {
+        setGuestFormData({
+          name: program.guestId.name || "",
+          address: program.guestId.address || "",
+          mobile: program.guestId.mobile || "",
+          description: program.guestId.description || "",
+        });
+      }
+
+      // Set selected food items
+      if (Array.isArray(program.foodItems) && program.foodItems.length > 0) {
+        setSelectedFoodItems(
+          program.foodItems.map((item) => ({
+            value: item._id,
+            label: item.name || item.label,
+          }))
+        );
+      }
+    } else if (!isEditMode) {
+      // Reset form for new program creation
+      setProgramFormData({
+        programType: "",
+        season: "",
+        hall: "",
+        reference: "",
+        totalGuest: "",
+        perHead: "",
+        decoration: 0,
+        hallCharge: 0,
+        service: 0,
+        paidDetails: "",
+        newPaidAmount: 0,
+        discount: 0,
+        remark: "",
+      });
+      setGuestFormData({ name: "", address: "", mobile: "", description: "" });
+      setProgramDate(new Date());
+      setSelectedGuest(null);
+      setSelectedFoodItems([]);
+    }
+  }, [program, isEditMode]);
+
+  // Effect to populate Guest Add fields when a guest is selected in the dropdown
+  useEffect(() => {
+    if (selectedGuest && guests.length > 0) {
+      const foundGuest = guests.find((g) => g._id === selectedGuest.value);
+      if (foundGuest) {
+        setGuestFormData({
+          name: foundGuest.name || "",
+          address: foundGuest.address || "",
+          mobile: foundGuest.mobile || "",
+          description: foundGuest.description || "",
+        });
+      }
+    } else if (!selectedGuest && !isEditMode) {
+      // Clear guestFormData if no guest is selected (for new programs)
+      setGuestFormData({ name: "", address: "", mobile: "", description: "" });
+    }
+  }, [selectedGuest, guests, isEditMode]);
+
+  // Handler for Program form inputs
+  const handleProgramInputChange = (e) => {
+    const { name, value } = e.target;
+    setProgramFormData((prev) => ({
+      ...prev,
+      [name]: [
+        "totalGuest",
+        "perHead",
+        "decoration",
+        "hallCharge",
+        "service",
+        "newPaidAmount",
+        "discount",
+      ].includes(name)
+        ? value === ""
+          ? ""
+          : Number(value)
+        : value,
     }));
-    setStartDate(program?.programDate);
-    setType(program?.programType);
-    setSeason(program?.season);
-    setHall(program?.hall);
-    setReference(program?.reference);
-    setTotalGuest(program?.totalGuest);
-    setPerHead(program?.perHead);
-    setDecoration(program?.decoration);
-    setHallCharge(program?.hallCharge);
-    setService(program?.service);
-    setDiscount(program?.discount);
-    setTimeout(() => {
-      setSelectedGuest(
-        guestArray.filter((x) => x?.value === program?.guestId?._id)
-      );
-    }, 1000);
-  }, [program]);
+  };
 
-  const foodArray = foods.map((el) => ({
-    value: el["_id"],
-    label: el["name"],
-  }));
+  // Handler for Guest form inputs
+  const handleGuestInputChange = (e) => {
+    const { name, value } = e.target;
+    setGuestFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
-  // For Selected Filter Alhamdulillah
-  let currentDate = new Date();
+  // Helper function to sum existing payments (for edit mode)
+  const getExistingPaidAmount = () => {
+    return isEditMode && program?.paid?.length > 0
+      ? program.paid.reduce((sum, p) => sum + Number(p.paid), 0)
+      : 0;
+  };
+
+  // Effect for all calculations
   useEffect(() => {
-    const paid = Number(newPaid);
-    setPaidInfo([
-      {
-        paid,
-        paidDetails,
-        currentDate,
-      },
-    ]);
-    setStartDate(new Date());
-    const food = foodInfo;
-    food?.push(selectedOption);
-    setFoodInfo(food);
-    setAmount(totalGuest * perHead);
-    setFinalAmount(
-      Number(amount) +
-        Number(hallCharge) +
-        Number(decoration) +
-        Number(service) -
-        Number(discount)
-    );
-    if (program) {
-      setDue(
-        Number(finalAmount) -
-          Number(program?.paid?.reduce((n, { paid }) => n + paid, 0)) -
-          Number(newPaid)
-      );
-    } else {
-      setDue(Number(finalAmount) - Number(newPaid));
-    }
+    const totalGuestsNum = Number(programFormData.totalGuest) || 0;
+    const perHeadNum = Number(programFormData.perHead) || 0;
+    const decorationNum = Number(programFormData.decoration) || 0;
+    const hallChargeNum = Number(programFormData.hallCharge) || 0;
+    const serviceNum = Number(programFormData.service) || 0;
+    const discountNum = Number(programFormData.discount) || 0;
+    const newPaidAmountNum = Number(programFormData.newPaidAmount) || 0;
+
+    const amount = totalGuestsNum * perHeadNum;
+    let final =
+      amount + decorationNum + hallChargeNum + serviceNum - discountNum;
+    const totalPaid = getExistingPaidAmount() + newPaidAmountNum;
+    const due = final - totalPaid;
+
+    setCalculatedAmounts({
+      amount: amount,
+      finalAmount: final,
+      due: due,
+    });
   }, [
-    newPaid,
-    paidDetails,
-    selectedOption,
-    totalGuest,
-    perHead,
-    amount,
-    hallCharge,
-    service,
-    discount,
-    finalAmount,
-    due,
+    programFormData.totalGuest,
+    programFormData.perHead,
+    programFormData.decoration,
+    programFormData.hallCharge,
+    programFormData.service,
+    programFormData.discount,
+    programFormData.newPaidAmount,
+    program?.paid,
+    isEditMode,
   ]);
-  var finalFood = foodInfo?.reduce((unique, o) => {
-    if (
-      !unique.some((obj) => obj?.label === o?.label && obj?.value === o?.value)
-    ) {
-      unique.push(o);
-    }
-    return unique;
-  }, []);
 
-  const programHandler = (e) => {
+  // Handle adding/updating a guest
+  const handleGuestAction = async (e) => {
     e.preventDefault();
-    if (selectedGuest?.value == undefined) {
-      toast.error("Please select guest");
+    if (!validatePhoneNumber(guestFormData.mobile)) {
+      toast.error("Please enter a valid phone number for the guest.");
+      return;
+    }
+    if (!guestFormData.name.trim()) {
+      toast.error("Guest name is required.");
+      return;
+    }
+
+    // Dispatch guest_add with 'under: "restaurant"'
+    await dispatch(guest_add({ ...guestFormData, under: "restaurant" }));
+
+    // After adding/updating, re-fetch guests to update the dropdown list
+    setTimeout(() => {
+      dispatch(guests_get());
+    }, 500);
+  };
+
+  // Consolidated submission handler for Program
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!selectedGuest?.value) {
+      toast.error("Please select a guest for the program.");
+      return;
+    }
+    if (!programDate) {
+      toast.error("Please select a program date.");
+      return;
+    }
+    if (!programFormData.programType) {
+      toast.error("Please enter a program type.");
+      return;
+    }
+    if (!programFormData.hall) {
+      toast.error("Please enter a hall name.");
+      return;
+    }
+    if (Number(programFormData.totalGuest) <= 0) {
+      toast.error("Total guests must be a positive number.");
+      return;
+    }
+    if (Number(programFormData.perHead) <= 0) {
+      toast.error("Per head charge must be a positive number.");
+      return;
+    }
+
+    const currentPaidInfo =
+      isEditMode && program?.paid ? [...program.paid] : [];
+
+    if (programFormData.newPaidAmount > 0) {
+      currentPaidInfo.push({
+        paid: Number(programFormData.newPaidAmount),
+        paidDetails: programFormData.paidDetails,
+        currentDate: new Date(),
+      });
+    }
+
+    const foodItemsPayload = selectedFoodItems.map((item) => ({
+      _id: item.value,
+      name: item.label,
+    }));
+
+    const payload = {
+      foodItems: foodItemsPayload,
+      totalAmount: calculatedAmounts.amount,
+      discount: Number(programFormData.discount),
+      finalAmount: calculatedAmounts.finalAmount,
+      hallCharge: Number(programFormData.hallCharge),
+      decoration: Number(programFormData.decoration),
+      service: Number(programFormData.service),
+      guestId: selectedGuest.value,
+      totalGuest: Number(programFormData.totalGuest),
+      due: calculatedAmounts.due,
+      paid: currentPaidInfo,
+      programDate: programDate,
+      hall: programFormData.hall,
+      programType: programFormData.programType,
+      season: programFormData.season,
+      perHead: Number(programFormData.perHead),
+      reference: programFormData.reference,
+      remark: programFormData.remark,
+    };
+
+    if (isEditMode) {
+      dispatch(update_program({ ...payload, programId: paramProgramId }));
     } else {
-      dispatch(
-        new_program({
-          foodItems: finalFood,
-          totalAmount: amount,
-          discount: discount,
-          finalAmount: finalAmount,
-          hallCharge: hallCharge,
-          decoration: decoration,
-          service: service,
-          guestId: selectedGuest?.value,
-          totalGuest: totalGuest,
-          due: due,
-          paid: paidInfo,
-          programDate: startDate,
-          hall: hall,
-          programType: type,
-          season: season,
-          perHead: perHead,
-          reference: reference,
-        })
-      );
+      dispatch(new_program(payload));
     }
   };
 
-  const updateHandler = (e) => {
-    e.preventDefault();
-    if (selectedGuest?.value == undefined) {
-      toast.error("Please select guest");
-    } else {
-      dispatch(
-        update_program({
-          foodItems: finalFood,
-          totalAmount: amount,
-          discount: discount,
-          finalAmount: finalAmount,
-          hallCharge: hallCharge,
-          decoration: decoration,
-          service: service,
-          guestId: selectedGuest?.value,
-          totalGuest: totalGuest,
-          due: due,
-          paid: paidInfo,
-          programDate: startDate,
-          hall: hall,
-          programType: type,
-          season: season,
-          perHead: perHead,
-          reference: reference,
-          programId: program?._id,
-        })
-      );
-    }
-  };
-
+  // Handle success/error messages
   useEffect(() => {
     if (errorMessage) {
       toast.error(errorMessage);
@@ -198,251 +352,396 @@ function Program() {
     if (successMessage) {
       toast.success(successMessage);
       dispatch(messageClear());
-      navigate("/restaurant/invoice");
+      navigate("/restaurant/invoice"); // Navigate after success
     }
-  }, [successMessage, errorMessage]);
+  }, [successMessage, errorMessage, dispatch, navigate]);
+
+  // Data preparation for React-Select dropdowns
+  const guestOptions = guests.map((el) => ({
+    value: el._id,
+    label: `${el.name} (${el.mobile})`, // Show name and mobile for better selection
+  }));
+
+  const foodOptions = foods.map((el) => ({
+    value: el._id,
+    label: el.name,
+  }));
+
   return (
     <>
-      <div className="grid grid-cols-1 mt-3 gap-9 sm:grid-cols-2">
-        <div className="flex flex-col gap-9">
-          {/* <!-- Input Fields --> */}
-          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-            <div className="flex flex-col gap-5.5 p-6.5">
-              <label className="block text-black dark:text-white">
-                Select Program Date
-              </label>
-              <DatePicker
-                className="text-gray-800 outline-none border-2 w-full text-center border-white focus:border-blue-300 dark:bg-boxdark dark:text-white p-1"
-                selected={startDate ? startDate : new Date()}
-                onChange={(date) => setStartDate(date)}
-              />
+      <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+        {isEditMode ? "Edit Program" : "New Program"}
+      </h2>
+      {loader && (
+        <p className="text-center text-lg text-blue-600 dark:text-blue-400">
+          Loading program data...
+        </p>
+      )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column */}
+        <div className="flex flex-col gap-6">
+          {/* Add Guest Section */}
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark p-6">
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
+              {selectedGuest ? "Update Guest Details" : "Add New Guest"}
+            </h3>
+            <div className="flex flex-col gap-4">
               <div>
-                <label className="mb-3 block text-black dark:text-white">
-                  Program Type
+                <label className="block text-black dark:text-white mb-2">
+                  Guest Name <span className="text-red-500">*</span>
                 </label>
                 <input
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
+                  name="name"
+                  value={guestFormData.name}
+                  onChange={handleGuestInputChange}
                   type="text"
-                  placeholder="Program Type"
+                  placeholder="Guest Name"
                   className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
-                <label className="mb-3 block text-black dark:text-white">
+              </div>
+              <div>
+                <label className="block text-black dark:text-white mb-2">
+                  Mobile <span className="text-red-500">*</span>
+                </label>
+                <input
+                  name="mobile"
+                  value={guestFormData.mobile}
+                  onChange={handleGuestInputChange}
+                  type="tel"
+                  placeholder="Guest Mobile (e.g., +8801...)"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-black dark:text-white mb-2">
+                  Address
+                </label>
+                <input
+                  name="address"
+                  value={guestFormData.address}
+                  onChange={handleGuestInputChange}
+                  type="text"
+                  placeholder="Guest Address"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-black dark:text-white mb-2">
+                  Description
+                </label>
+                <textarea
+                  name="description"
+                  value={guestFormData.description}
+                  onChange={handleGuestInputChange}
+                  placeholder="Any additional guest notes"
+                  rows="2"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                ></textarea>
+              </div>
+              <button
+                onClick={handleGuestAction}
+                className="inline-flex items-center justify-center rounded-full bg-indigo-600 py-3 px-6 text-center font-medium text-white hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loader}
+              >
+                {selectedGuest ? "Update Selected Guest" : "Add New Guest"}
+              </button>
+            </div>
+          </div>
+
+          {/* Program Details Section */}
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark p-6">
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
+              Program Details
+            </h3>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-black dark:text-white mb-2">
+                  Program Date
+                </label>
+                <DatePicker
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                  selected={programDate}
+                  onChange={(date) => setProgramDate(date)}
+                />
+              </div>
+              <div>
+                <label className="block text-black dark:text-white mb-2">
+                  Program Type <span className="text-red-500">*</span>
+                </label>
+                <input
+                  name="programType"
+                  value={programFormData.programType}
+                  onChange={handleProgramInputChange}
+                  type="text"
+                  placeholder="e.g., Wedding, Birthday, Corporate Event"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-black dark:text-white mb-2">
                   Season
                 </label>
                 <input
-                  value={season}
-                  onChange={(e) => setSeason(e.target.value)}
+                  name="season"
+                  value={programFormData.season}
+                  onChange={handleProgramInputChange}
                   type="text"
-                  placeholder="Season"
-                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-                <label className="mb-3 block text-black dark:text-white">
-                  Hall
-                </label>
-                <input
-                  value={hall}
-                  onChange={(e) => setHall(e.target.value)}
-                  type="text"
-                  placeholder="Hall"
+                  placeholder="e.g., Lunch, Dinner, Whole Day"
                   className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
               </div>
               <div>
-                <label className="mb-3 block text-black dark:text-white">
+                <label className="block text-black dark:text-white mb-2">
+                  Hall <span className="text-red-500">*</span>
+                </label>
+                <input
+                  name="hall"
+                  value={programFormData.hall}
+                  onChange={handleProgramInputChange}
+                  type="text"
+                  placeholder="e.g., Blue Diamond"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-black dark:text-white mb-2">
                   Reference
                 </label>
                 <input
-                  value={reference}
-                  onChange={(e) => setReference(e.target.value)}
+                  name="reference"
+                  value={programFormData.reference}
+                  onChange={handleProgramInputChange}
                   type="text"
-                  placeholder="Reference"
-                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-                <label className="mb-3 block text-black dark:text-white">
-                  Total Guest
-                </label>
-                <input
-                  value={totalGuest}
-                  onChange={(e) => setTotalGuest(e.target.value)}
-                  type="number"
-                  placeholder="Total Guest"
+                  placeholder="e.g., Zabed Sir, Event Planner"
                   className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
               </div>
               <div>
-                <label className="mb-3 block text-black dark:text-white">
-                  Per Head
+                <label className="block text-black dark:text-white mb-2">
+                  Total Guests <span className="text-red-500">*</span>
                 </label>
                 <input
-                  value={perHead}
-                  onChange={(e) => setPerHead(e.target.value)}
+                  name="totalGuest"
+                  value={programFormData.totalGuest}
+                  onChange={handleProgramInputChange}
                   type="number"
-                  placeholder="Per Head"
-                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-                <label className="mb-3 block text-black dark:text-white">
-                  Amount
-                </label>
-                <input
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  type="number"
-                  placeholder="Amount"
+                  min="0"
+                  placeholder="Number of guests"
                   className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
               </div>
               <div>
-                <label className="mb-3 block text-black dark:text-white">
+                <label className="block text-black dark:text-white mb-2">
+                  Per Head Charge <span className="text-red-500">*</span>
+                </label>
+                <input
+                  name="perHead"
+                  value={programFormData.perHead}
+                  onChange={handleProgramInputChange}
+                  type="number"
+                  min="0"
+                  placeholder="Cost per guest"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+              <div className="flex justify-between items-center text-black dark:text-white text-lg font-medium py-2 border-t border-stroke dark:border-strokedark pt-4 mt-2">
+                <span>Calculated Base Amount:</span>
+                <span>TK {calculatedAmounts.amount.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Financials and Foods */}
+        <div className="flex flex-col gap-6">
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark p-6">
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
+              Additional Charges
+            </h3>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-black dark:text-white mb-2">
                   Decoration
                 </label>
                 <input
-                  value={decoration}
-                  onChange={(e) => setDecoration(e.target.value)}
+                  name="decoration"
+                  value={programFormData.decoration}
+                  onChange={handleProgramInputChange}
                   type="number"
-                  placeholder="Decoration"
+                  min="0"
+                  placeholder="Decoration charge"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-black dark:text-white mb-2">
+                  Hall Charge
+                </label>
+                <input
+                  name="hallCharge"
+                  value={programFormData.hallCharge}
+                  onChange={handleProgramInputChange}
+                  type="number"
+                  min="0"
+                  placeholder="Hall rental charge"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="block text-black dark:text-white mb-2">
+                  Service Charge
+                </label>
+                <input
+                  name="service"
+                  value={programFormData.service}
+                  onChange={handleProgramInputChange}
+                  type="number"
+                  min="0"
+                  placeholder="Service charge"
                   className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
               </div>
             </div>
           </div>
 
-          {/* <!-- Toggle switch input --> */}
-
-          {/* <!-- Time and date --> */}
-
-          {/* <!-- File upload --> */}
-        </div>
-
-        <div className="flex flex-col gap-9">
-          {/* <!-- Textarea Fields --> */}
-          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
-            <div className="flex flex-col gap-5.5 p-9.5">
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark p-6">
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
+              Financials
+            </h3>
+            <div className="flex flex-col gap-4">
               <div>
-                <label className="mb-3 block text-black dark:text-white">
-                  Hall Charge
-                </label>
-                <input
-                  value={hallCharge}
-                  onChange={(e) => setHallCharge(e.target.value)}
-                  type="number"
-                  placeholder="Hall Charge"
-                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-                <label className="mb-3 block text-black dark:text-white">
-                  Service
-                </label>
-                <input
-                  value={service}
-                  onChange={(e) => setService(e.target.value)}
-                  type="number"
-                  placeholder="Service"
-                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-                <label className="mb-3 block text-black dark:text-white">
-                  Paid
-                </label>
-                <input
-                  value={newPaid}
-                  onChange={(e) => setPaid(e.target.value)}
-                  type="number"
-                  placeholder="Paid"
-                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-              </div>
-              {program ? (
-                <span className="flex justify-start items-start">
-                  Already Paid Tk{" "}
-                  {program?.paid?.reduce((n, { paid }) => n + paid, 0)}
-                </span>
-              ) : (
-                ""
-              )}
-              <div>
-                <label className="mb-3 block text-black dark:text-white">
-                  Paid Details
-                </label>
-                <input
-                  value={paidDetails}
-                  onChange={(e) => setPaidDetails(e.target.value)}
-                  type="text"
-                  placeholder="Paid Details"
-                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
-                />
-                <label className="mb-3 block text-black dark:text-white">
+                <label className="block text-black dark:text-white mb-2">
                   Discount
                 </label>
                 <input
-                  value={discount}
-                  onChange={(e) => setDiscount(e.target.value)}
+                  name="discount"
+                  value={programFormData.discount}
+                  onChange={handleProgramInputChange}
                   type="number"
-                  placeholder="Discount"
+                  min="0"
+                  placeholder="Discount amount"
                   className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
-                <label className="mb-3 block text-black dark:text-white">
-                  Due
+              </div>
+              <div className="flex justify-between items-center text-black dark:text-white text-lg font-medium py-2">
+                <span>Final Amount:</span>
+                <span>${calculatedAmounts.finalAmount.toFixed(2)}</span>
+              </div>
+              {isEditMode && program?.paid?.length > 0 && (
+                <div className="flex justify-between items-center text-black dark:text-white text-sm py-1">
+                  <span>Already Paid:</span>
+                  <span>Tk {getExistingPaidAmount().toFixed(2)}</span>
+                </div>
+              )}
+              <div>
+                <label className="block text-black dark:text-white mb-2">
+                  New Paid Amount
                 </label>
                 <input
-                  value={due}
-                  onChange={(e) => setDue(e.target.value)}
+                  name="newPaidAmount"
+                  value={programFormData.newPaidAmount}
+                  onChange={handleProgramInputChange}
                   type="number"
-                  placeholder="Due"
+                  min="0"
+                  placeholder="Amount being paid now"
                   className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
                 />
               </div>
               <div>
-                <label className="mb-3 block text-black dark:text-white">
+                <label className="block text-black dark:text-white mb-2">
+                  Paid Details
+                </label>
+                <input
+                  name="paidDetails"
+                  value={programFormData.paidDetails}
+                  onChange={handleProgramInputChange}
+                  type="text"
+                  placeholder="e.g., Cash, Card, Bank Transfer"
+                  className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+                />
+              </div>
+              <div className="flex justify-between items-center text-black dark:text-white text-lg font-medium py-2">
+                <span>Due Amount:</span>
+                <span>${calculatedAmounts.due.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark p-6">
+            <h3 className="text-lg font-semibold text-black dark:text-white mb-4">
+              Guest & Food Details
+            </h3>
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="block text-black dark:text-white mb-2">
                   Guest Details
                 </label>
                 <Select
                   onChange={setSelectedGuest}
-                  options={guestArray}
+                  options={guestOptions}
                   value={selectedGuest}
                   placeholder="Select Guest"
+                  className="react-select-container"
+                  classNamePrefix="react-select"
                 />
               </div>
               <div>
-                <label className="mb-3 block text-black dark:text-white">
+                <label className="block text-black dark:text-white mb-2">
                   Food Items
                 </label>
                 <Select
-                  defaultValue={selectedOption}
-                  onChange={setSelectedOption}
-                  options={foodArray}
-                  placeholder="Food Items"
+                  isMulti
+                  options={foodOptions}
+                  onChange={setSelectedFoodItems}
+                  value={selectedFoodItems}
+                  placeholder="Select Food Items"
+                  className="react-select-container"
+                  classNamePrefix="react-select"
                 />
               </div>
-              <span className="flex justify-start items-start">
-                {finalFood && finalFood.map((d, j) => <p>{d?.label} &nbsp;</p>)}
-              </span>
-              <label className="block text-black dark:text-white">
-                Previous Food list
+              <div className="flex flex-wrap gap-2 items-center text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-medium">Selected:</span>
+                {selectedFoodItems.length > 0 ? (
+                  selectedFoodItems.map((d, j) => (
+                    <span
+                      key={j}
+                      className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full text-xs"
+                    >
+                      {d?.label}
+                    </span>
+                  ))
+                ) : (
+                  <span>None</span>
+                )}
+              </div>
+              <label className="block text-black dark:text-white mb-2">
+                Remark
               </label>
-              <span className="flex justify-start items-start">
-                {program?.foodItems?.map((i, q) => <p>{i?.label} &nbsp;</p>)}
-              </span>
-
-              {program ? (
-                <button
-                  onClick={(e) => updateHandler(e)}
-                  className="inline-flex items-center justify-center rounded-full bg-primary py-4  px-10 text-center font-medium text-white hover:bg-opacity-90 lg:px-8 xl:px-10"
-                >
-                  Update Program
-                </button>
-              ) : (
-                <button
-                  onClick={(e) => programHandler(e)}
-                  className="inline-flex items-center justify-center rounded-full bg-primary py-4  px-10 text-center font-medium text-white hover:bg-opacity-90 lg:px-8 xl:px-10"
-                >
-                  New Program
-                </button>
-              )}
+              <textarea
+                name="remark"
+                value={programFormData.remark}
+                onChange={handleProgramInputChange}
+                placeholder="Add any specific notes or remarks here..."
+                rows="3"
+                className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
+              ></textarea>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Action Button */}
+      <div className="flex justify-center mt-6">
+        <button
+          onClick={handleSubmit}
+          className="inline-flex items-center justify-center rounded-full bg-blue-600 py-4 px-10 text-center font-medium text-white hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loader}
+        >
+          {isEditMode ? "Update Program" : "Create New Program"}
+        </button>
       </div>
     </>
   );
 }
 
-export default Program;
+export default ProgramForm;

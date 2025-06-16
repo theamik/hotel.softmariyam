@@ -189,7 +189,7 @@ export const new_program = createAsyncThunk(
     {
       foodItems,
       totalAmount,
-      totalQuantity,
+      remark,
       discount,
       finalAmount,
       hallCharge,
@@ -214,7 +214,7 @@ export const new_program = createAsyncThunk(
         {
           foodItems,
           totalAmount,
-          totalQuantity,
+          remark,
           discount,
           finalAmount,
           hallCharge,
@@ -276,7 +276,7 @@ export const update_program = createAsyncThunk(
     {
       foodItems,
       totalAmount,
-      totalQuantity,
+      remark,
       discount,
       finalAmount,
       hallCharge,
@@ -302,7 +302,7 @@ export const update_program = createAsyncThunk(
         {
           foodItems,
           totalAmount,
-          totalQuantity,
+          remark,
           discount,
           finalAmount,
           hallCharge,

@@ -147,6 +147,7 @@ export const orderSlice = createSlice({
       .addCase(new_program.rejected, (state, action) => {
         state.loader = false;
         state.errorMessage = action.payload.error;
+        state.errorMessage = action.payload.message;
       })
       .addCase(get_programs.fulfilled, (state, action) => {
         state.loader = false;
@@ -176,7 +177,7 @@ export const orderSlice = createSlice({
       .addCase(update_program.fulfilled, (state, action) => {
         state.loader = false;
         state.successMessage = action.payload.message;
-        state.program = action.payload.guest;
+        state.program = action.payload.program;
       })
       .addCase(update_program.rejected, (state, action) => {
         state.loader = false;

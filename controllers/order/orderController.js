@@ -860,16 +860,17 @@ class orderController {
     const { id, role } = req;
     const {
       foodItems,
-      totalAmount,
+      totalAmount, // This is the calculated totalGuest * perHead
+      remark, // Added remark from frontend
       discount,
-      finalAmount,
+      finalAmount, // This is totalAmount + charges - discount
       hallCharge,
       decoration,
       service,
       guestId,
       totalGuest,
       due,
-      paid,
+      paid, // This is the full paidInfo array from frontend, including new payment
       programDate,
       hall,
       programType,
@@ -877,149 +878,258 @@ class orderController {
       reference,
       season,
     } = req.body;
-    if (role === "staff") {
-      var { branchId } = await staffModel.findById(id);
-      var { companyId } = await staffModel.findById(id);
-      var { name } = await staffModel.findById(id);
-    } else {
-      var { companyId } = await ownerModel.findById(id);
-      var { name } = await ownerModel.findById(id);
-    }
-    var tempDate = moment(Date.now()).format("YYYY-MM-DD");
-    var date = moment(programDate).format("YYYY-MM-DD");
-    const credit_party = await partyModel.find({
-      accountType: "income",
-      under: "restaurant",
-      companyId: companyId,
-    });
-    const discount_party = await partyModel.find({
-      accountType: "discount",
-      under: "restaurant",
-      companyId: companyId,
-    });
-    const debit_party = await partyModel.find({
-      accountType: "cash_restaurant",
-      companyId: companyId,
-    });
-    const lastPaid = paid[paid.length - 1].paid;
-    const UniqueId = Date.now().toString(36).toUpperCase();
-    const program_no = await programModel
-      .find()
-      .sort({ $natural: -1 })
-      .limit(1);
-    if (program_no[0]?.programNo === undefined) {
-      var newProgramId = Number(30001);
-    } else {
-      var newProgramId = Number(program_no[0]?.programNo) + 1;
-    }
-    try {
-      if (discount > 0) {
-        const transaction = await transactionModel.create({
-          transactionNo: UniqueId,
-          debit: debit_party[0],
-          credit: credit_party[0],
-          generatedBy: name,
-          balance: lastPaid,
-          date: tempDate,
-          orderNo: newProgramId,
-          companyId: companyId,
-        });
-        const transaction2 = await transactionModel.create({
-          transactionNo: UniqueId,
-          debit: discount_party[0],
-          credit: credit_party[0],
-          generatedBy: name,
-          balance: discount,
-          date: tempDate,
-          orderNo: newProgramId,
-          companyId: companyId,
-        });
-        const program = await programModel.create({
-          programNo: newProgramId,
-          transactionId: transaction.id,
-          guestId: guestId,
-          generatedBy: name,
-          foodItems,
-          totalAmount,
-          totalGuest,
-          discount,
-          service,
-          hallCharge,
-          decoration,
-          finalAmount,
-          bookedDate: tempDate,
-          due,
-          paid,
-          programDate: date,
-          hall,
-          programType,
-          perHead,
-          reference,
-          season,
-          companyId: companyId,
-        });
 
-        responseReturn(res, 201, {
-          program,
-          message: "Program placed successfully",
-        });
+    let companyId;
+    let generatedByName;
+    let branchId = null; // Initialize branchId to null
+
+    let session = null; // For MongoDB transaction
+
+    try {
+      // --- Start MongoDB Session for Transaction (Highly Recommended) ---
+      // Uncomment these lines if you have MongoDB transactions configured and enabled
+      // session = await mongoose.startSession();
+      // session.startTransaction();
+
+      // --- 1. Determine User Role and Fetch Company/Name ---
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          // if (session) await session.abortTransaction();
+          return responseReturn(res, 404, { message: "Staff not found." });
+        }
+        companyId = staff.companyId;
+        generatedByName = staff.name;
+        branchId = staff.branchId; // Get branchId for staff
       } else {
-        const transaction = await transactionModel.create({
-          transactionNo: UniqueId,
-          debit: debit_party[0],
-          credit: credit_party[0]._id,
-          generatedBy: name,
-          balance: lastPaid,
-          date: tempDate,
-          orderNo: newProgramId,
-          companyId: companyId,
-        });
-        const program = await programModel.create({
-          programNo: newProgramId,
-          transactionId: transaction.id,
-          guestId: guestId,
-          generatedBy: name,
-          foodItems,
-          totalAmount,
-          totalGuest,
-          discount,
-          hallCharge,
-          decoration,
-          service,
-          finalAmount,
-          due,
-          paid,
-          programDate: date,
-          bookedDate: tempDate,
-          hall,
-          programType,
-          perHead,
-          reference,
-          season,
-          companyId: companyId,
-        });
-        responseReturn(res, 201, {
-          program,
-          message: "Program placed successfully",
+        // Role is owner
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          // if (session) await session.abortTransaction();
+          return responseReturn(res, 404, { message: "Owner not found." });
+        }
+        companyId = owner.companyId;
+        generatedByName = owner.name;
+      }
+
+      if (!companyId) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, { message: "Company ID not found." });
+      }
+
+      // --- Basic Input Validation (more detailed validation recommended with Joi/Express-validator) ---
+      if (
+        !hall ||
+        !programType ||
+        !reference ||
+        !guestId ||
+        !totalGuest ||
+        !perHead ||
+        !programDate ||
+        !foodItems ||
+        foodItems.length === 0
+      ) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message:
+            "Missing required program fields (hall, programType, reference, guestId, totalGuest, perHead, programDate, foodItems).",
         });
       }
-      debit_party[0].balance =
-        Number(debit_party[0].balance) + Number(lastPaid);
-      await debit_party[0].save();
-      discount_party[0].balance =
-        Number(discount_party[0].balance) + Number(discount);
-      await discount_party[0].save();
-      credit_party[0].balance =
-        Number(credit_party[0].balance) - Number(lastPaid + discount);
-      await credit_party[0].save();
-    } catch (error) {
-      responseReturn(res, 500, {
-        error,
+      if (Number(totalGuest) <= 0 || Number(perHead) <= 0) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message: "Total guest and per head must be positive numbers.",
+        });
+      }
+
+      const tempDate = moment().format("YYYY-MM-DD"); // Current date for `bookedDate` and transactions
+      const programFormattedDate = moment(programDate).format("YYYY-MM-DD"); // Program event date
+      const [credit_party, discount_party, debit_party] = await Promise.all([
+        partyModel.findOne({
+          accountType: "income",
+          under: "restaurant",
+          companyId: companyId,
+        }),
+        partyModel.findOne({
+          accountType: "discount",
+          under: "restaurant",
+          companyId: companyId,
+        }),
+        partyModel.findOne({
+          accountType: "cash_restaurant",
+          under: "restaurant",
+          companyId: companyId,
+        }), // TEMPORARY FIX: Added trailing space
+      ]);
+
+      if (!credit_party || !debit_party || !discount_party) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 500, {
+          message:
+            "Required financial accounts not found. Please set up 'income', 'discount', and 'cash_restaurant' parties.",
+        });
+      }
+
+      // Determine the *new* paid amount (from the last entry in the `paid` array if it's there)
+      // Frontend sends a consolidated `paid` array, so we need the newly added part.
+      // Assuming `paid` array contains at least one object with `paid` property from frontend.
+      const newPaymentAmount =
+        paid.length > 0 ? Number(paid[paid.length - 1].paid) : 0;
+
+      const UniqueId = Date.now().toString(36).toUpperCase(); // Unique ID for transactions
+
+      // Generate new program number
+      const lastProgram = await programModel
+        .findOne({ companyId: companyId })
+        .sort({ programNo: -1 })
+        .limit(1);
+      const newProgramNo =
+        (lastProgram?.programNo ? Number(lastProgram.programNo) : 30000) + 1;
+
+      let programTransactionId = null; // To store the ID of the main program transaction
+      let discountTransactionId = null; // To store the ID of the discount transaction
+
+      // --- Create Transactions ---
+      // Create main transaction for payment if amount is paid
+      if (newPaymentAmount > 0) {
+        const mainTransaction = await transactionModel.create([
+          {
+            transactionNo: UniqueId + "-PAY",
+            debit: debit_party._id, // Direct ID from findOne()
+            credit: credit_party._id, // Direct ID from findOne()
+            generatedBy: generatedByName,
+            balance: newPaymentAmount,
+            date: tempDate,
+            orderNo: newProgramNo,
+            companyId: companyId,
+            branchId: branchId, // Include branchId if staff
+          },
+        ]); // { session } if using transactions
+        programTransactionId = mainTransaction[0]._id;
+      }
+
+      // Create discount transaction if discount is applied
+      if (Number(discount) > 0) {
+        const discountTransaction = await transactionModel.create([
+          {
+            transactionNo: UniqueId + "-DISCOUNT",
+            debit: discount_party._id, // Direct ID from findOne()
+            credit: credit_party._id, // Direct ID from findOne()
+            generatedBy: generatedByName,
+            balance: Number(discount),
+            date: tempDate,
+            orderNo: newProgramNo,
+            companyId: companyId,
+            branchId: branchId, // Include branchId if staff
+          },
+        ]); // { session } if using transactions
+        discountTransactionId = discountTransaction[0]._id;
+      }
+
+      // --- Create Program Record ---
+      const program = await programModel.create([
+        {
+          programNo: newProgramNo,
+          // transactionId: programTransactionId, // Link main transaction ID
+          // If you want to store multiple transaction IDs, change this field to an array in schema
+          // and push both programTransactionId and discountTransactionId here.
+          transactionId: programTransactionId, // Storing only the main transaction ID as per schema
+          guestId: guestId,
+          generatedBy: generatedByName,
+          foodItems: foodItems, // Frontend sends array of { _id, name }
+          totalAmount: Number(totalAmount),
+          totalGuest: Number(totalGuest),
+          discount: Number(discount),
+          service: Number(service),
+          hallCharge: Number(hallCharge),
+          decoration: Number(decoration),
+          finalAmount: Number(finalAmount),
+          bookedDate: tempDate, // Date when the program was booked
+          due: Number(due),
+          paid: paid, // Full array of paid info
+          programDate: programFormattedDate, // Date of the actual program event
+          hall: hall,
+          programType: programType,
+          perHead: Number(perHead),
+          reference: reference,
+          season: season,
+          remark: remark, // Include remark
+          companyId: companyId,
+          branchId: branchId, // Include branchId if staff
+        },
+      ]); // { session } if using transactions
+
+      // --- Update Party Balances (after successful program and transaction creation) ---
+      // Cash account increases by what was paid
+      if (newPaymentAmount > 0) {
+        debit_party.balance = Number(debit_party.balance) + newPaymentAmount;
+        await debit_party.save(); // { session } if using transactions
+      }
+
+      // Discount account (contra-income/expense) increases by discount given
+      if (Number(discount) > 0) {
+        discount_party.balance =
+          Number(discount_party.balance) + Number(discount);
+        await discount_party.save(); // { session } if using transactions
+      }
+
+      // Income account (credit_party - hot_sales_account/income) increases by the final amount of the program
+      // This is typically the net revenue recognized from the program.
+      credit_party.balance = Number(credit_party.balance) + Number(finalAmount);
+      await credit_party.save(); // { session } if using transactions
+
+      // --- Commit Transaction and Send Response ---
+      // if (session) await session.commitTransaction();
+
+      const createdProgram = await programModel
+        .findById(program[0]._id)
+        .populate("guestId")
+        .populate("companyId")
+        .populate("branchId");
+      // No need to populate foodItems if they are just objects with _id and name
+      // If you changed foodItems schema to ref "foods", then populate like:
+      // .populate('foodItems._id')
+      responseReturn(res, 201, {
+        program: createdProgram,
+        message: "Program placed successfully",
       });
-      console.log(error.message);
+    } catch (error) {
+      console.error("Error in new_program:", error);
+
+      // --- Rollback Transaction on Error ---
+      // if (session) {
+      //     await session.abortTransaction();
+      //     console.warn("MongoDB transaction aborted due to error.");
+      // }
+
+      // Mongoose validation error handling
+      if (error.name === "ValidationError") {
+        const errors = {};
+        for (const field in error.errors) {
+          errors[field] = error.errors[field].message;
+        }
+        return responseReturn(res, 400, {
+          message: "Validation error",
+          errors,
+        });
+      }
+      if (error.name === "CastError") {
+        return responseReturn(res, 400, {
+          message: "Invalid ID format provided.",
+          details: error.message,
+        });
+      }
+      responseReturn(res, 500, {
+        message: "Server Error: Unable to create new program.",
+        details: error.message,
+      });
+    } finally {
+      // --- End Session (Important even if transaction is aborted) ---
+      // if (session) {
+      //     session.endSession();
+      // }
     }
   };
-
   all_programs = async (req, res) => {
     const { id } = req;
 
@@ -1056,164 +1166,314 @@ class orderController {
   };
 
   update_program = async (req, res) => {
-    const { id, role } = req;
+    const { id, role } = req; // Authenticated user ID and role
     const {
-      foodItems,
-      totalAmount,
-      discount,
-      finalAmount,
+      foodItems, // Array of selected food items (from frontend)
+      totalAmount, // Calculated total based on guests * perHead
+      remark, // Program remark
+      discount, // Total discount for the program
+      finalAmount, // Final amount after all charges and discount
       hallCharge,
       decoration,
       service,
-      guestId,
+      guestId, // Guest ID
       totalGuest,
       due,
-      paid,
-      programDate,
+      paid, // Full array of paid info (including new payments)
+      programDate, // Date of the program event
       hall,
       programType,
       perHead,
       reference,
       season,
-      programId,
+      programId, // ID of the program to update (from frontend payload)
     } = req.body;
-    if (role === "staff") {
-      var { branchId } = await staffModel.findById(id);
-      var { companyId } = await staffModel.findById(id);
-      var { name } = await staffModel.findById(id);
-    } else {
-      var { companyId } = await ownerModel.findById(id);
-      var { name } = await ownerModel.findById(id);
-    }
-    var tempDate = moment(Date.now()).format("YYYY-MM-DD");
-    var date = moment(programDate).format("YYYY-MM-DD");
-    const credit_party = await partyModel.find({
-      accountType: "income",
-      under: "restaurant",
-      companyId: companyId,
-    });
-    const discount_party = await partyModel.find({
-      accountType: "discount",
-      under: "restaurant",
-      companyId: companyId,
-    });
-    const debit_party = await partyModel.find({
-      accountType: "cash_restaurant",
-      under: "restaurant",
-      companyId: companyId,
-    });
-    const UniqueId = Date.now().toString(36).toUpperCase();
-    const program_no = await programModel
-      .find()
-      .sort({ $natural: -1 })
-      .limit(1);
+
+    let companyId;
+    let generatedByName;
+    let branchId = null; // Initialize branchId
+
+    let session = null; // For MongoDB transaction
 
     try {
-      if (discount > 0) {
-        const program = await programModel.findByIdAndUpdate(programId, {
-          guestId: guestId,
-          generatedBy: name,
-          totalAmount,
-          totalGuest,
-          discount,
-          service,
-          hallCharge,
-          decoration,
-          finalAmount,
-          bookedDate: tempDate,
-          programDate: date,
-          hall,
-          programType,
-          perHead,
-          reference,
-          season,
-        });
+      // --- Start MongoDB Session for Transaction (Highly Recommended) ---
+      // Uncomment these lines if you have MongoDB transactions configured and enabled
+      // session = await mongoose.startSession();
+      // session.startTransaction();
 
-        const transaction = await transactionModel.create({
-          transactionNo: UniqueId,
-          debit: debit_party[0],
-          credit: credit_party[0],
-          generatedBy: name,
-          balance: paid[0].paid,
-          date: tempDate,
-          orderNo: program?.programNo,
-        });
-        const transaction2 = await transactionModel.create({
-          transactionNo: UniqueId,
-          debit: discount_party[0],
-          credit: credit_party[0],
-          generatedBy: name,
-          balance: discount,
-          date: tempDate,
-          orderNo: program?.programNo,
-        });
-
-        program?.foodItems.push(...foodItems);
-        program?.paid.push(...paid);
-        program?.due - paid[0]?.paid;
-        await program.save();
-
-        responseReturn(res, 201, {
-          guest,
-          message: "Program updated successfully",
-        });
+      // --- 1. Determine User Role and Fetch Company/Name ---
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          // if (session) await session.abortTransaction();
+          return responseReturn(res, 404, { message: "Staff not found." });
+        }
+        companyId = staff.companyId;
+        generatedByName = staff.name;
+        branchId = staff.branchId; // Get branchId for staff
       } else {
-        const program = await programModel.findByIdAndUpdate(programId, {
-          guestId: guestId,
-          generatedBy: name,
-          totalAmount,
-          totalGuest,
-          discount,
-          hallCharge,
-          decoration,
-          service,
-          finalAmount,
-          programDate: date,
-          hall,
-          programType,
-          perHead,
-          reference,
-          season,
-        });
-        const transaction = await transactionModel.create({
-          transactionNo: UniqueId,
-          debit: debit_party[0],
-          credit: credit_party[0]._id,
-          generatedBy: name,
-          balance: paid[0].paid,
-          date: tempDate,
-          orderNo: program?.programNo,
-        });
+        // Role is owner
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          // if (session) await session.abortTransaction();
+          return responseReturn(res, 404, { message: "Owner not found." });
+        }
+        companyId = owner.companyId;
+        generatedByName = owner.name;
+      }
 
-        program?.foodItems.push(...foodItems);
-        program?.paid.push(...paid);
-        program?.due - paid[0]?.paid;
-        await program.save();
+      if (!companyId) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, { message: "Company ID not found." });
+      }
 
-        const guest = programModel.findById(programId);
-        responseReturn(res, 201, {
-          guest,
-          message: "Program updated successfully",
+      // --- Basic Input Validation (consider a dedicated validation middleware for more robust checks) ---
+      if (!mongoose.Types.ObjectId.isValid(programId)) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message: "Invalid Program ID format.",
+        });
+      }
+      if (
+        !hall ||
+        !programType ||
+        !reference ||
+        !guestId ||
+        !totalGuest ||
+        !perHead ||
+        !programDate ||
+        !foodItems ||
+        foodItems.length === 0
+      ) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message:
+            "Missing required program fields (hall, programType, reference, guestId, totalGuest, perHead, programDate, foodItems).",
+        });
+      }
+      if (Number(totalGuest) <= 0 || Number(perHead) <= 0) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message: "Total guest and per head must be positive numbers.",
         });
       }
 
-      debit_party[0].balance =
-        Number(debit_party[0].balance) + Number(paid[0]?.paid);
-      await debit_party[0].save();
-      discount_party[0].balance =
-        Number(discount_party[0].balance) + Number(discount);
-      await discount_party[0].save();
-      credit_party[0].balance =
-        Number(credit_party[0].balance) - Number(paid[0]?.paid + discount);
-      await credit_party[0].save();
-    } catch (error) {
-      responseReturn(res, 500, {
-        error,
+      const tempDate = moment().format("YYYY-MM-DD"); // Current server date for transaction dates
+      const programFormattedDate = moment(programDate).format("YYYY-MM-DD"); // Date of the actual program event
+
+      // --- Fetch Existing Program to Compare Changes ---
+      const existingProgram = await programModel.findById(programId); // { session } if using transactions
+      if (!existingProgram) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 404, { message: "Program not found." });
+      }
+
+      // --- Fetch Financial Parties ---
+      const [credit_party, discount_party, debit_party] = await Promise.all([
+        partyModel.findOne({
+          accountType: "income",
+          under: "restaurant",
+          companyId: companyId,
+        }),
+        partyModel.findOne({
+          accountType: "discount",
+          under: "restaurant",
+          companyId: companyId,
+        }),
+        partyModel.findOne({
+          accountType: "cash_restaurant",
+          under: "restaurant",
+          companyId: companyId,
+        }), // TEMPORARY FIX: Includes trailing space as per previous debug. REMOVE THIS SPACE AFTER DATABASE CLEANUP.
+      ]);
+
+      if (!credit_party || !debit_party || !discount_party) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 500, {
+          message:
+            "Required financial accounts not found. Please set up 'income', 'discount', and 'cash_restaurant' parties under 'restaurant' for this company. Check for trailing spaces in accountType fields!",
+        });
+      }
+
+      // --- Calculate Financial Deltas for Transactions ---
+      // Calculate the difference in paid amount
+      const previousTotalPaid =
+        existingProgram.paid?.reduce((sum, p) => sum + Number(p.paid), 0) || 0;
+      const currentTotalPaidInRequest = paid.reduce(
+        (sum, p) => sum + Number(p.paid),
+        0
+      );
+      const newPaidAmountInThisRequest =
+        currentTotalPaidInRequest - previousTotalPaid;
+
+      // Calculate the difference in discount
+      const previousDiscount = Number(existingProgram.discount) || 0;
+      const currentDiscount = Number(discount);
+      const discountDifference = currentDiscount - previousDiscount;
+
+      const UniqueId = Date.now().toString(36).toUpperCase(); // Unique ID for new transactions
+
+      let programTransactionId = existingProgram.transactionId; // Keep existing if no new main transaction
+      let newDiscountTransactionId = null; // New ID for discount transaction if created
+
+      // --- Create New Transactions for Deltas ---
+      // Create main transaction for NEW payment if applicable
+      if (newPaidAmountInThisRequest > 0) {
+        const mainTransaction = await transactionModel.create([
+          {
+            transactionNo: UniqueId + "-PAY",
+            debit: debit_party._id,
+            credit: credit_party._id,
+            generatedBy: generatedByName,
+            balance: newPaidAmountInThisRequest,
+            date: tempDate,
+            orderNo: existingProgram.programNo, // Link to existing program's number
+            companyId: companyId,
+            branchId: branchId,
+          },
+        ]); // { session }
+        programTransactionId = mainTransaction[0]._id; // Update transactionId if a new main transaction was created
+      }
+
+      // Create a new discount transaction only if discount amount has actually changed
+      if (discountDifference !== 0) {
+        const discountTransaction = await transactionModel.create([
+          {
+            transactionNo: UniqueId + "-DISCOUNT",
+            debit: discount_party._id,
+            credit: credit_party._id, // Discounts reduce income from accounting perspective
+            generatedBy: generatedByName,
+            balance: Math.abs(discountDifference), // Use absolute value for the balance of the transaction
+            date: tempDate,
+            orderNo: existingProgram.programNo,
+            companyId: companyId,
+            branchId: branchId,
+          },
+        ]); // { session }
+        newDiscountTransactionId = discountTransaction[0]._id;
+      }
+
+      // --- Prepare Update Object for Program ---
+      const programUpdateFields = {
+        guestId: guestId,
+        generatedBy: generatedByName, // Update generatedBy on every change if desired
+        foodItems: foodItems, // Frontend sends entire updated array, so directly set
+        totalAmount: Number(totalAmount),
+        totalGuest: Number(totalGuest),
+        discount: Number(discount),
+        service: Number(service),
+        hallCharge: Number(hallCharge),
+        decoration: Number(decoration),
+        finalAmount: Number(finalAmount),
+        // bookedDate: existingProgram.bookedDate, // bookedDate should generally not change
+        programDate: programFormattedDate, // Update program event date
+        hall: hall,
+        programType: programType,
+        perHead: Number(perHead),
+        reference: reference,
+        season: season,
+        remark: remark, // Include remark
+        paid: paid, // Frontend sends entire updated array, so directly set
+        due: Number(due), // Update due directly
+        transactionId: programTransactionId, // Link main transaction ID (or manage as an array if multiple)
+        // If you want to store multiple transaction IDs, change `transactionId` in schema to an array
+        // and push `programTransactionId` and `newDiscountTransactionId` here.
+        companyId: companyId, // Should generally not change after creation
+        branchId: branchId, // Should generally not change after creation
+      };
+
+      // --- Update Program Document in Database ---
+      const updatedProgram = await programModel.findByIdAndUpdate(
+        programId,
+        programUpdateFields,
+        { new: true, runValidators: true } // `new: true` returns the updated doc, `runValidators: true` runs schema validators
+      ); // { session }
+
+      if (!updatedProgram) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 404, {
+          message: "Program not found after update attempt.",
+        });
+      }
+
+      // --- Update Party Balances (after successful program and transaction creation) ---
+      // 1. Debit Party (Cash) - Increases with new payments
+      if (newPaidAmountInThisRequest > 0) {
+        debit_party.balance =
+          Number(debit_party.balance) + newPaidAmountInThisRequest;
+        await debit_party.save(); // { session }
+      }
+
+      // 2. Discount Party - Adjusts based on discount change
+      if (discountDifference !== 0) {
+        // If discount increased (more discount given), balance of discount party increases (like an expense)
+        // If discount decreased (less discount given), balance of discount party decreases (like a revenue adjustment)
+        discount_party.balance =
+          Number(discount_party.balance) + discountDifference; // Add the difference
+        await discount_party.save(); // { session }
+      }
+
+      // 3. Credit Party (Income) - Adjusts based on change in net revenue (finalAmount)
+      // This is crucial: the income account should reflect the *change* in net revenue from this program.
+      const previousFinalAmount = Number(existingProgram.finalAmount) || 0;
+      const finalAmountDifference = Number(finalAmount) - previousFinalAmount;
+
+      if (finalAmountDifference !== 0) {
+        credit_party.balance =
+          Number(credit_party.balance) + finalAmountDifference;
+        await credit_party.save(); // { session }
+      }
+
+      // --- Commit Transaction and Send Response ---
+      // if (session) await session.commitTransaction();
+
+      const populatedProgram = await programModel
+        .findById(updatedProgram._id)
+        .populate("guestId")
+        .populate("companyId")
+        .populate("branchId");
+
+      responseReturn(res, 200, {
+        program: populatedProgram,
+        message: "Program updated successfully",
       });
-      console.log(error.message);
+    } catch (error) {
+      console.error("Error in update_program:", error);
+
+      // --- Rollback Transaction on Error ---
+      // if (session) {
+      //     await session.abortTransaction();
+      //     console.warn("MongoDB transaction aborted due to error.");
+      // }
+
+      // Mongoose validation error handling
+      if (error.name === "ValidationError") {
+        const errors = {};
+        for (const field in error.errors) {
+          errors[field] = error.errors[field].message;
+        }
+        return responseReturn(res, 400, {
+          message: "Validation error",
+          errors,
+        });
+      }
+      if (error.name === "CastError") {
+        return responseReturn(res, 400, {
+          message: "Invalid ID format provided.",
+          details: error.message,
+        });
+      }
+      responseReturn(res, 500, {
+        message: "Server Error: Unable to update program.",
+        details: error.message,
+      });
+    } finally {
+      // --- End Session (Important even if transaction is aborted) ---
+      // if (session) {
+      //     session.endSession();
+      // }
     }
   };
-
   cancel_program = async (req, res) => {
     const { programId } = req.params;
     try {

@@ -24,10 +24,16 @@ const programModel = new Schema(
       type: String,
       required: true,
     },
-    foodItems: {
-      type: Array,
-      required: true,
-    },
+    foodItems: [
+      {
+        _id: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "foods",
+        }, // Assuming a 'foods' collection
+        name: { type: String },
+        // You could add quantity here if needed for each food item, etc.
+      },
+    ],
     totalAmount: {
       type: Number,
       required: true,
@@ -89,6 +95,10 @@ const programModel = new Schema(
     },
     season: {
       type: String,
+    },
+    remark: {
+      type: String,
+      default: "",
     },
   },
   { timestamps: true }
