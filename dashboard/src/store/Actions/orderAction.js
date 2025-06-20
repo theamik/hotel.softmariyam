@@ -28,6 +28,7 @@ export const pre_order = createAsyncThunk(
       partyId,
       delivery,
       service,
+      remark,
     },
     { rejectWithValue, fulfillWithValue }
   ) => {
@@ -44,6 +45,7 @@ export const pre_order = createAsyncThunk(
           partyId,
           delivery,
           service,
+          remark,
         },
         {
           withCredentials: true,
@@ -113,6 +115,7 @@ export const place_order = createAsyncThunk(
       partyId,
       delivery,
       service,
+      remark,
     },
     { rejectWithValue, fulfillWithValue }
   ) => {
@@ -129,6 +132,7 @@ export const place_order = createAsyncThunk(
           partyId,
           delivery,
           service,
+          remark,
         },
         {
           withCredentials: true,
@@ -143,11 +147,17 @@ export const place_order = createAsyncThunk(
 
 export const get_orders = createAsyncThunk(
   "order/get_orders",
-  async (_, { rejectWithValue, fulfillWithValue }) => {
+  async (
+    { page, perPage, searchQuery, status },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
     try {
-      const { data } = await api.get(`/order/get-company-orders`, {
-        withCredentials: true,
-      });
+      const { data } = await api.get(
+        `/order/get-company-orders?page=${page}&perPage=${perPage}&searchQuery=${searchQuery}&status=${status}`,
+        {
+          withCredentials: true,
+        }
+      );
       return fulfillWithValue(data);
     } catch (error) {
       return rejectWithValue(error.response.data);
@@ -165,6 +175,23 @@ export const get_a_order = createAsyncThunk(
       return fulfillWithValue(data);
     } catch (error) {
       return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+// NEW ACTION: Update order status
+export const update_order_status = createAsyncThunk(
+  "order/update_order_status",
+  async ({ orderId, status }, { rejectWithValue, fulfillWithValue }) => {
+    try {
+      const { data } = await api.put(
+        `/order/update-status/${orderId}`, // Assuming PUT endpoint for status update
+        { status },
+        { withCredentials: true }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error?.response?.data);
     }
   }
 );
@@ -244,11 +271,17 @@ export const new_program = createAsyncThunk(
 
 export const get_programs = createAsyncThunk(
   "order/get_programs",
-  async (_, { rejectWithValue, fulfillWithValue }) => {
+  async (
+    { page, perPage, searchQuery },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
     try {
-      const { data } = await api.get(`/order/all-programs`, {
-        withCredentials: true,
-      });
+      const { data } = await api.get(
+        `/order/all-programs?page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        {
+          withCredentials: true,
+        }
+      );
       return fulfillWithValue(data);
     } catch (error) {
       return rejectWithValue(error.response.data);

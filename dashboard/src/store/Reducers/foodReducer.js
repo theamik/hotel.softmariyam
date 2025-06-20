@@ -29,6 +29,14 @@ import {
   update_reservation,
   get_reservations_by_date_status,
   get_reservations_by_date_status_stay_view,
+  cancel_reservations_get,
+  will_check_reservations_get,
+  check_in_reservations_get,
+  check_out_reservations_get,
+  available_guests_get,
+  confirmed_guests_get,
+  finished_guests_get,
+  cancelled_guests_get,
 } from "../Actions/foodAction";
 
 const initialState = {
@@ -44,7 +52,7 @@ const initialState = {
   totalFood: 0,
   guests: [],
   guest: "",
-  totalGuest: 0,
+  totalGuests: 0,
 };
 
 export const foodSlice = createSlice({
@@ -214,7 +222,31 @@ export const foodSlice = createSlice({
         state.loader = false;
         state.successMessage = action.payload.message;
         state.guests = action.payload.guests;
-        state.totalGuest = action.payload.totalGuest;
+        state.totalGuests = action.payload.totalGuests;
+      })
+      .addCase(available_guests_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.guests = action.payload.guests;
+        state.totalGuests = action.payload.totalGuests;
+      })
+      .addCase(confirmed_guests_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.guests = action.payload.guests;
+        state.totalGuests = action.payload.totalGuests;
+      })
+      .addCase(finished_guests_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.guests = action.payload.guests;
+        state.totalGuests = action.payload.totalGuests;
+      })
+      .addCase(cancelled_guests_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.guests = action.payload.guests;
+        state.totalGuests = action.payload.totalGuests;
       })
       .addCase(get_a_guest.pending, (state) => {
         state.loader = true;
@@ -286,6 +318,31 @@ export const foodSlice = createSlice({
         state.reservations = action.payload.reservations;
         state.totalReservations = action.payload.totalReservations;
       })
+      .addCase(cancel_reservations_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.reservations = action.payload.reservations;
+        state.totalReservations = action.payload.totalReservations;
+      })
+      .addCase(will_check_reservations_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.reservations = action.payload.reservations;
+        state.totalReservations = action.payload.totalReservations;
+      })
+      .addCase(check_in_reservations_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.reservations = action.payload.reservations;
+        state.totalReservations = action.payload.totalReservations;
+      })
+      .addCase(check_out_reservations_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.reservations = action.payload.reservations;
+        state.totalReservations = action.payload.totalReservations;
+      })
+
       .addCase(get_a_reservation.pending, (state) => {
         state.loader = true;
       })

@@ -53,6 +53,11 @@ const draftSchema = new Schema(
       type: Object,
       required: true,
     },
+    remark: {
+      // Added remark field
+      type: String,
+      default: "", // Optional, provide a default empty string
+    },
   },
   { timestamps: true }
 );

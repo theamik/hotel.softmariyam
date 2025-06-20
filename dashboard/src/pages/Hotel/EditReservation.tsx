@@ -8,7 +8,7 @@ import HotelInvoice from "./HotelInvoice"; // Assuming this will be updated to h
 import {
   get_a_guest,
   guest_add,
-  hotel_guests_get,
+  guests_get,
   update_reservation,
   new_reservation, // Import new_reservation action
   get_a_reservation, // Action to fetch specific reservation for edit mode
@@ -24,7 +24,8 @@ import {
 } from "../../store/Actions/roomAction";
 import { validatePhoneNumber } from "../../utils/validations";
 import queryString from "query-string";
-import moment from "moment"; // Import moment for consistent date handling
+import moment from "moment";
+import { useSearchParams } from "react-router-dom"; // Import moment for consistent date handling
 
 // Constants
 const RESERVATION_STATUS = [
@@ -36,14 +37,25 @@ const RESERVATION_STATUS = [
 
 function ReservationForm() {
   // Get reservation ID from URL path
+  const [params, setParams] = useSearchParams();
   const location = useLocation(); // To parse query params for initial room/date selection in new mode
 
   // Determine if it's edit mode or new reservation mode
   const {
-    reservationId: paramReservationId,
     roomId: initialRoomIdFromQuery,
     checkInDate: initialCheckInDateFromQuery,
   } = queryString.parse(location.search);
+
+  const getCleanReservationId = () => {
+    const reservationParam = params.get("reservationId");
+    if (reservationParam) {
+      // Split the string by '?' and take the first part
+      return reservationParam.split("?")[0];
+    }
+    return null;
+  };
+
+  const paramReservationId = getCleanReservationId();
   const isEditMode = !!paramReservationId;
   // Get initial room and check-in date from query parameters for new reservation creation
 
@@ -142,7 +154,7 @@ function ReservationForm() {
     );
     // Fetch guests again after a short delay to get the newly added guest
     setTimeout(() => {
-      dispatch(hotel_guests_get());
+      dispatch(guests_get());
     }, 1000);
   };
 
@@ -301,7 +313,7 @@ function ReservationForm() {
   useEffect(() => {
     if (isEditMode && paramReservationId) {
       dispatch(get_a_reservation(paramReservationId));
-      dispatch(hotel_guests_get()); // Ensure guests are fetched for dropdown
+      dispatch(guests_get()); // Ensure guests are fetched for dropdown
     } else if (!isEditMode) {
       // Initialize for new reservation mode
       setFormData({
@@ -340,7 +352,7 @@ function ReservationForm() {
         // Fetch room details to add it to roomSelections initially
         dispatch(get_a_room(initialRoomIdFromQuery));
       }
-      dispatch(hotel_guests_get());
+      dispatch(guests_get());
     }
   }, [
     isEditMode,
@@ -428,7 +440,7 @@ function ReservationForm() {
   // Fetch rooms (available & booked) based on mode and dates
   useEffect(() => {
     // Always fetch all guests
-    dispatch(hotel_guests_get());
+    dispatch(guests_get());
 
     if (isEditMode && reservation?._id) {
       // In edit mode, fetch rooms considering the current reservation

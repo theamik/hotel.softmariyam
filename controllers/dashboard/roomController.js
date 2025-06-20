@@ -344,7 +344,6 @@ class roomController {
       const bookedRooms = allRooms
         .filter((room) => reservedRoomIds.includes(room._id.toString()))
         .sort((a, b) => a.name.localeCompare(b.name));
-      console.log(bookedRooms);
       // 5. Return the result
       responseReturn(res, 200, { bookedRooms });
     } catch (error) {

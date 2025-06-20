@@ -57,10 +57,12 @@ const guestSchema = new Schema(
 guestSchema.index(
   {
     name: "text",
+    mobile: "text", // Only if mobile content is suitable for text search
   },
   {
     weights: {
       name: 5,
+      mobile: 2, // Assign a weight if needed
     },
   }
 );

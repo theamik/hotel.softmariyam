@@ -68,14 +68,14 @@ const reservationModel = new Schema(
     // these would also need to be arrays of sub-objects. For now, keeping as objects.
     others: [
       {
-        other: { type: String, default: "" },
-        otherAmount: { type: Number, default: 0 },
+        other: { type: String },
+        otherAmount: { type: Number },
       },
     ],
     restaurants: [
       {
-        restaurant: { type: String, default: "" },
-        restaurantAmount: { type: Number, default: 0 },
+        restaurant: { type: String },
+        restaurantAmount: { type: Number },
       },
     ],
 

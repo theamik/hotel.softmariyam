@@ -385,7 +385,7 @@ class foodController {
     const { companyId } = await ownerModel.findById(id);
     try {
       const guests = await guestModel
-        .find({ companyId: companyId, under: "restaurant" })
+        .find({ companyId: companyId, under: "hotel" })
         .sort({ updatedAt: -1 });
       const totalGuest = await guestModel
         .find({ companyId: companyId, under: "hotel" })
@@ -399,18 +399,50 @@ class foodController {
 
   get_hotel_guests = async (req, res) => {
     const { id } = req;
+    const currentPage = parseInt(req.query.page) || 1;
+    const itemsPerPage = parseInt(req.query.perPage) || 10;
+    const statusFilter = req.query.status;
+    const under = req.query.under; // Get status from query
+    const searchQuery = req.query.searchQuery; // Get search query
+    const skip = (currentPage - 1) * itemsPerPage;
 
-    const { companyId } = await ownerModel.findById(id);
     try {
+      const owner = await ownerModel.findById(id);
+      if (!owner) {
+        return responseReturn(res, 404, { error: "Owner not found" });
+      }
+      const { companyId } = owner;
+
+      let query = { companyId: companyId, under: under };
+
+      // Apply status filter if provided
+      if (statusFilter && statusFilter !== "all") {
+        query.status = statusFilter;
+      }
+
+      // Apply search query if provided
+      if (searchQuery) {
+        const searchRegex = new RegExp(searchQuery, "i"); // Case-insensitive search
+        // Use $or to search across 'name' AND 'mobile' using $regex
+        // IMPORTANT: Ensure query.$or is applied directly, not nested if it leads to conflict
+        query.$or = [
+          { name: { $regex: searchRegex } },
+          { mobile: { $regex: searchRegex } },
+        ];
+      }
+
+      // Debugging step: Log the final query object
+
       const guests = await guestModel
-        .find({ companyId: companyId, under: "hotel" })
-        .sort({ updatedAt: -1 });
-      const totalGuest = await guestModel
-        .find({ companyId: companyId, under: "hotel" })
-        .countDocuments();
-      responseReturn(res, 200, { totalGuest, guests });
+        .find(query)
+        .sort({ updatedAt: -1 })
+        .skip(skip)
+        .limit(itemsPerPage);
+
+      const totalGuests = await guestModel.countDocuments(query);
+      responseReturn(res, 200, { totalGuests, guests });
     } catch (error) {
-      console.log(error.message);
+      console.error("Error fetching hotel guests:", error);
       responseReturn(res, 500, { error: "Internal server error" });
     }
   };

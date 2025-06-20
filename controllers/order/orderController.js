@@ -22,6 +22,7 @@ const tableModel = require("../../models/tableModel");
 const programModel = require("../../models/programModel");
 const reservationModel = require("../../models/reservationModel");
 const roomModel = require("../../models/roomModel");
+const guestModel = require("../../models/guestModel");
 class orderController {
   purchase_confirm = async (req, res) => {
     const { id } = req;
@@ -162,6 +163,7 @@ class orderController {
       responseReturn(res, 500, { error: "Internal server error" });
     }
   };
+
   place_order = async (req, res) => {
     const { id, role } = req;
     const {
@@ -174,141 +176,243 @@ class orderController {
       delivery,
       service,
       party,
+      remark, // Remark is correctly received here from the frontend
     } = req.body;
-    if (role === "staff") {
-      var { branchId } = await staffModel.findById(id);
-      var { companyId } = await staffModel.findById(id);
-      var { name } = await staffModel.findById(id);
-    } else {
-      var { companyId } = await ownerModel.findById(id);
-      var { name } = await ownerModel.findById(id);
-    }
-    var tempDate = moment(Date.now()).format("YYYY-MM-DD");
 
-    const credit_party = await partyModel.find({
-      accountType: "res_sales_account",
-      companyId: companyId,
-    });
-    const discount_party = await partyModel.find({
-      accountType: "discount",
-      under: "restaurant",
-      companyId: companyId,
-    });
-    const debit_party = await partyModel.find({
-      accountType: "cash_restaurant",
-      companyId: companyId,
-    });
+    let generatedByUserName;
+    let companyId;
+    let branchId = null; // Initialize as null for cases where staff is not applicable
 
-    const UniqueId = Date.now().toString(36).toUpperCase();
-    const order_no = await orderModel.find().sort({ $natural: -1 }).limit(1);
-    if (order_no[0]?.orderNo === undefined) {
-      var newOrderId = Number(200001);
-    } else {
-      var newOrderId = Number(order_no[0]?.orderNo) + 1;
-    }
     try {
-      if (discount > 0) {
-        const transaction = await transactionModel.create({
-          transactionNo: UniqueId,
-          debit: debit_party[0],
-          credit: credit_party[0],
-          generatedBy: name,
-          balance: finalAmount,
-          date: tempDate,
-          orderNo: newOrderId,
-          companyId: companyId,
-        });
-        const transaction2 = await transactionModel.create({
-          transactionNo: UniqueId,
-          debit: discount_party[0],
-          credit: credit_party[0],
-          generatedBy: name,
-          balance: discount,
-          date: tempDate,
-          orderNo: newOrderId,
-          companyId: companyId,
-        });
-        const order = await orderModel.create({
-          orderNo: newOrderId,
-          transactionId: transaction.id,
-          party: party,
-          generatedBy: name,
-          cartItems,
-          totalAmount,
-          totalQuantity,
-          discount,
-          delivery,
-          service,
-          finalAmount,
-          date: tempDate,
-          companyId: companyId,
-        });
-
-        responseReturn(res, 201, {
-          order,
-          message: "Order placed successfully",
-        });
+      // 1. Optimize User Data Fetching: Fetch staff/owner data once
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          return responseReturn(res, 404, { error: "Staff user not found." });
+        }
+        branchId = staff.branchId;
+        companyId = staff.companyId;
+        generatedByUserName = staff.name;
       } else {
-        const transaction = await transactionModel.create({
-          transactionNo: UniqueId,
-          debit: debit_party[0],
-          credit: credit_party[0]._id,
-          generatedBy: name,
-          balance: totalAmount,
-          date: tempDate,
-          companyId: companyId,
-        });
-        const order = await orderModel.create({
-          orderNo: newOrderId,
-          transactionId: transaction.id,
-          party: party,
-          generatedBy: name,
-          cartItems,
-          totalAmount,
-          totalQuantity,
-          discount,
-          delivery,
-          service,
-          finalAmount,
-          date: tempDate,
-          companyId: companyId,
-        });
-        responseReturn(res, 201, {
-          order,
-          message: "Order placed successfully",
+        // Assuming 'owner' role
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          return responseReturn(res, 404, { error: "Owner user not found." });
+        }
+        companyId = owner.companyId;
+        generatedByUserName = owner.name;
+      }
+
+      // 2. Capture Full Date and Time for consistency
+      const currentDateTime = new Date(); // Captures full timestamp (date and time)
+
+      // 3. Fetch Parties Needed for Transactions using findOne
+      const credit_party = await partyModel.findOne({
+        accountType: "res_sales_account",
+        under: "restaurant",
+        companyId: companyId,
+      });
+      const discount_party = await partyModel.findOne({
+        accountType: "discount",
+        under: "restaurant",
+        companyId: companyId,
+      });
+      const debit_party = await partyModel.findOne({
+        accountType: "accounts_receivable",
+        under: "restaurant",
+        companyId: companyId,
+      });
+
+      // Basic validation for critical parties
+      if (!credit_party || !debit_party) {
+        return responseReturn(res, 500, {
+          error:
+            "Required transaction parties (Sales, Accounts Receivable) not configured.",
         });
       }
-      debit_party[0].balance =
-        Number(debit_party[0].balance) + Number(finalAmount);
-      await debit_party[0].save();
-      discount_party[0].balance =
-        Number(discount_party[0].balance) + Number(discount);
-      await discount_party[0].save();
-      credit_party[0].balance =
-        Number(credit_party[0].balance) - Number(finalAmount + discount);
-      await credit_party[0].save();
+      if (discount > 0 && !discount_party) {
+        return responseReturn(res, 500, {
+          error: "Discount party not configured for transactions.",
+        });
+      }
+
+      // 4. Generate Unique ID and Order Number
+      const UniqueId = Date.now().toString(36).toUpperCase();
+      const latestOrder = await orderModel.findOne().sort({ orderNo: -1 }); // Sort by orderNo descending
+      const newOrderId = latestOrder ? Number(latestOrder.orderNo) + 1 : 200001;
+
+      let transaction;
+      let discountTransaction = null;
+
+      // Create transactions based on whether a discount is applied
+      if (discount > 0) {
+        transaction = await transactionModel.create({
+          transactionNo: UniqueId,
+          debit: debit_party._id,
+          credit: credit_party._id,
+          generatedBy: generatedByUserName,
+          balance: finalAmount,
+          date: currentDateTime, // Use full date and time
+          orderNo: newOrderId,
+          companyId: companyId,
+          ...(branchId && { branchId }), // Conditionally add branchId
+        });
+
+        discountTransaction = await transactionModel.create({
+          transactionNo: UniqueId,
+          debit: discount_party._id,
+          credit: credit_party._id,
+          generatedBy: generatedByUserName,
+          balance: discount,
+          date: currentDateTime, // Use full date and time
+          orderNo: newOrderId,
+          companyId: companyId,
+          ...(branchId && { branchId }), // Conditionally add branchId
+        });
+      } else {
+        transaction = await transactionModel.create({
+          transactionNo: UniqueId,
+          debit: debit_party._id,
+          credit: credit_party._id,
+          generatedBy: generatedByUserName,
+          balance: finalAmount,
+          date: currentDateTime, // Use full date and time
+          companyId: companyId,
+          orderNo: newOrderId,
+          ...(branchId && { branchId }), // Conditionally add branchId
+        });
+      }
+
+      // 5. Create the Order Entry
+      const order = await orderModel.create({
+        orderNo: newOrderId,
+        transactionId: transaction._id,
+        party: party,
+        generatedBy: generatedByUserName,
+        cartItems,
+        totalAmount,
+        totalQuantity,
+        discount,
+        delivery,
+        service,
+        partyId,
+        finalAmount,
+        date: currentDateTime, // Use full date and time
+        companyId: companyId,
+        remark, // Remark is correctly passed to orderModel
+        ...(branchId && { branchId }), // Conditionally add branchId
+      });
+
+      debit_party.balance =
+        (Number(debit_party.balance) || 0) + Number(finalAmount);
+      await debit_party.save();
+
+      if (discount > 0 && discount_party) {
+        discount_party.balance =
+          (Number(discount_party.balance) || 0) + Number(discount);
+        await discount_party.save();
+      }
+
+      // Assuming credit_party (res_sales_account) is an income account whose balance increases with credits.
+      // It receives credit entries for both finalAmount and discount from the transactions.
+      credit_party.balance =
+        (Number(credit_party.balance) || 0) +
+        Number(finalAmount) +
+        Number(discount);
+      await credit_party.save();
+
+      // Send successful response
+      responseReturn(res, 201, {
+        order,
+        message: "Order placed successfully",
+      });
     } catch (error) {
-      console.log(error.message);
+      console.error("Error placing order:", error); // Log the full error for debugging
+      responseReturn(res, 500, {
+        error: "Failed to place order due to an internal server error.",
+      });
     }
   };
 
   get_company_orders = async (req, res) => {
-    const { id } = req;
-    const { companyId } = await ownerModel.findById(id);
+    const { id, role } = req; // Assuming 'id' is userId/staffId/ownerId and 'role' from auth middleware
+    const { page, perPage, searchQuery, status } = req.query; // Extract query parameters
+
+    let companyId = null;
+    let branchId = null;
+    const queryObject = {}; // Initialize the query object for MongoDB
+
     try {
+      // --- 1. Determine User Role and Fetch Company/Branch ID ---
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          return responseReturn(res, 404, { message: "Staff not found." });
+        }
+        companyId = staff.companyId;
+        branchId = staff.branchId; // Staff can only see orders for their branch
+        queryObject.branchId = branchId; // Add branch filter for staff
+      } else {
+        // Role is owner
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          return responseReturn(res, 404, { message: "Owner not found." });
+        }
+        companyId = owner.companyId;
+      }
+
+      if (!companyId) {
+        return responseReturn(res, 400, {
+          message: "Company ID not found for the user.",
+        });
+      }
+
+      queryObject.companyId = companyId; // Always filter by companyId
+
+      // --- 2. Apply Status Filter ---
+      const allowedStatuses = ["paid", "due", "cancelled"];
+      if (status && allowedStatuses.includes(status)) {
+        queryObject.status = status;
+      }
+
+      // --- 3. Apply Search Query ---
+      if (searchQuery) {
+        const regex = new RegExp(searchQuery, "i"); // Case-insensitive search
+        // Search across orderNo and party fields.
+        // For more complex search (e.g., within cartItems), you might need $lookup and $unwind.
+        queryObject.$or = [
+          { orderNo: regex },
+          { party: regex },
+          // Add other fields you want to search by here
+        ];
+      }
+
+      // --- 4. Pagination Setup ---
+      const currentPageNum = parseInt(page) || 1;
+      const itemsPerPageNum = parseInt(perPage) || 10;
+      const skip = (currentPageNum - 1) * itemsPerPageNum;
+
+      // --- 5. Fetch Total Orders (with filters applied for accurate count) ---
+      const totalOrders = await orderModel.countDocuments(queryObject);
+
+      // --- 6. Fetch Paginated and Filtered Orders ---
       const orders = await orderModel
-        .find({ companyId: companyId })
-        .sort({ createdAt: -1 });
-      const totalOrders = await orderModel
-        .find({ companyId: companyId })
-        .countDocuments();
+        .find(queryObject)
+        .sort({ createdAt: -1 }) // Sort by creation date, newest first
+        .skip(skip)
+        .limit(itemsPerPageNum);
 
       responseReturn(res, 200, {
         orders,
         totalOrders,
+        message: "Orders fetched successfully.",
       });
     } catch (error) {
-      responseReturn(res, 500, { error: "Internal server error" });
+      console.error("Error in get_company_orders:", error);
+      responseReturn(res, 500, {
+        message: "Internal server error: Unable to retrieve orders.",
+        details: error.message,
+      });
     }
   };
   get_company_order = async (req, res) => {
@@ -321,6 +425,257 @@ class orderController {
       });
     } catch (error) {
       console.log(error.message);
+    }
+  };
+
+  update_order_status = async (req, res) => {
+    const { id, role } = req; // Assuming 'id' is userId/staffId/ownerId from auth middleware
+    const { orderId } = req.params; // Get order ID from URL parameters
+    const { status: newStatus } = req.body; // Get new status from request body
+
+    let companyId,
+      generatedByName,
+      branchId = null; // Initialize branchId
+
+    let session = null; // For MongoDB transaction
+
+    try {
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          // if (session) await session.abortTransaction();
+          return responseReturn(res, 404, { message: "Staff not found." });
+        }
+        companyId = staff.companyId;
+        generatedByName = staff.name;
+        branchId = staff.branchId;
+      } else {
+        // Role is owner
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          // if (session) await session.abortTransaction();
+          return responseReturn(res, 404, { message: "Owner not found." });
+        }
+        companyId = owner.companyId;
+        generatedByName = owner.name;
+      }
+
+      if (!companyId) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, { message: "Company ID not found." });
+      }
+
+      // --- 2. Validate Inputs ---
+      if (!mongoose.Types.ObjectId.isValid(orderId)) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message: "Invalid Order ID format.",
+        });
+      }
+
+      const allowedStatuses = ["paid", "due", "cancelled"];
+      if (!allowedStatuses.includes(newStatus)) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message: `Invalid status provided. Must be one of: ${allowedStatuses.join(
+            ", "
+          )}`,
+        });
+      }
+
+      // --- 3. Fetch Existing Order ---
+      const existingOrder = await orderModel.findById(orderId); // { session } if using transactions
+      if (!existingOrder) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 404, { message: "Order not found." });
+      }
+
+      const currentStatus = existingOrder.status;
+
+      // --- 4. Implement Status Transition Validation Rules ---
+      if (
+        currentStatus === "paid" &&
+        (newStatus === "due" || newStatus === "cancelled")
+      ) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message: "Cannot change a 'Paid' order back to 'Due' or 'Cancelled'.",
+        });
+      }
+      if (
+        currentStatus === "cancelled" &&
+        (newStatus === "paid" || newStatus === "due")
+      ) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 400, {
+          message: "Cannot change a 'Cancelled' order back to 'Paid' or 'Due'.",
+        });
+      }
+
+      // If the status is already the new status, no action needed
+      if (currentStatus === newStatus) {
+        return responseReturn(res, 200, {
+          order: existingOrder,
+          message: "Order status is already up to date.",
+        });
+      }
+
+      // --- 5. Fetch Financial Parties (only if a financial transaction might be involved) ---
+      let cashRestaurantParty = null;
+      let accRecParty = null;
+      let saleParty = null; // Even if not directly used, good to have for consistency if needed
+
+      // Only fetch if we're transitioning to 'paid' (which creates a transaction)
+      if (
+        newStatus === "paid" ||
+        (newStatus === "cancelled" && currentStatus === "due")
+      ) {
+        [accRecParty, cashRestaurantParty, saleParty] = await Promise.all([
+          partyModel.findOne({
+            accountType: "accounts_receivable",
+            under: "restaurant",
+            companyId: companyId,
+          }),
+          partyModel.findOne({
+            accountType: "cash_restaurant",
+            under: "restaurant",
+            companyId: companyId,
+          }),
+          partyModel.findOne({
+            accountType: "res_sales_account",
+            under: "restaurant",
+            companyId: companyId,
+          }), // Ensure trailing space if that's in DB
+        ]);
+
+        if (!accRecParty || !cashRestaurantParty || !saleParty) {
+          // if (session) await session.abortTransaction();
+          return responseReturn(res, 500, {
+            message:
+              "Required financial accounts for payment ('income' or 'cash_restaurant') not found. Please set them up.",
+          });
+        }
+      }
+
+      const tempDate = moment().format("YYYY-MM-DD");
+      const UniqueId = Date.now().toString(36).toUpperCase();
+      let transactionId = null; // To store new transaction ID if created
+
+      // --- 6. Handle Financial Implications based on Status Change ---
+      const updateFields = { status: newStatus };
+
+      if (newStatus === "paid" && currentStatus === "due") {
+        // Logic for paying off a 'due' order
+        const amountToPay = existingOrder.totalAmount; // The outstanding due amount
+        if (amountToPay > 0) {
+          // Create a new transaction for this payment
+          const newTransaction = await transactionModel.create([
+            {
+              transactionNo: UniqueId + "-PAY",
+              debit: cashRestaurantParty._id, // Cash account is debited
+              credit: accRecParty._id, // Income account is credited
+              generatedBy: generatedByName,
+              balance: amountToPay,
+              date: tempDate,
+              orderNo: existingOrder.orderNo, // Link to the order
+              companyId: companyId,
+              branchId: branchId,
+            },
+          ]); // { session }
+          transactionId = newTransaction[0]._id;
+
+          // Update Party Balances
+          cashRestaurantParty.balance =
+            Number(cashRestaurantParty.balance) + amountToPay;
+          await cashRestaurantParty.save(); // { session }
+
+          accRecParty.balance = Number(accRecParty.balance) + amountToPay; // Income increases
+          await accRecParty.save(); // { session }
+        }
+      } else if (newStatus === "cancelled") {
+        const amountToPay = existingOrder.totalAmount; // The outstanding due amount
+        if (amountToPay > 0) {
+          // Create a new transaction for this payment
+          const newTransaction = await transactionModel.create([
+            {
+              transactionNo: UniqueId + "-PAY",
+              debit: saleParty._id, // Cash account is debited
+              credit: accRecParty._id, // Income account is credited
+              generatedBy: generatedByName,
+              balance: amountToPay,
+              date: tempDate,
+              orderNo: existingOrder.orderNo, // Link to the order
+              companyId: companyId,
+              branchId: branchId,
+            },
+          ]); // { session }
+          transactionId = newTransaction[0]._id;
+
+          // Update Party Balances
+          saleParty.balance = Number(saleParty.balance) + amountToPay;
+          await saleParty.save(); // { session }
+
+          accRecParty.balance = Number(accRecParty.balance) + amountToPay; // Income increases
+          await accRecParty.save(); // { session }
+        }
+      }
+      // No explicit financial changes for 'due' status, as it's the default state.
+
+      // --- 7. Update Order in Database ---
+      const updatedOrder = await orderModel.findByIdAndUpdate(
+        orderId,
+        updateFields,
+        { new: true, runValidators: true } // `new: true` returns the updated doc
+      ); // { session }
+
+      if (!updatedOrder) {
+        // if (session) await session.abortTransaction();
+        return responseReturn(res, 404, {
+          message: "Order not found after update attempt.",
+        });
+      }
+
+      // --- Commit Transaction ---
+      // if (session) await session.commitTransaction();
+
+      responseReturn(res, 200, {
+        order: updatedOrder,
+        message: `Order status updated to '${newStatus}' successfully`,
+      });
+    } catch (error) {
+      console.error("Error in update_order_status:", error);
+
+      // --- Rollback Transaction on Error ---
+      // if (session) {
+      //     await session.abortTransaction();
+      //     console.warn("MongoDB transaction aborted due to error.");
+      // }
+
+      if (error.name === "ValidationError") {
+        const errors = {};
+        for (const field in error.errors) {
+          errors[field] = error.errors[field].message;
+        }
+        return responseReturn(res, 400, {
+          message: "Validation error",
+          errors,
+        });
+      }
+      if (error.name === "CastError") {
+        return responseReturn(res, 400, {
+          message: "Invalid ID format provided.",
+          details: error.message,
+        });
+      }
+      responseReturn(res, 500, {
+        message: "Server Error: Unable to update order status.",
+        details: error.message,
+      });
+    } finally {
+      // --- End Session (Important even if transaction is aborted) ---
+      // if (session) {
+      //     session.endSession();
+      // }
     }
   };
 
@@ -399,7 +754,7 @@ class orderController {
   };
 
   make_draft = async (req, res) => {
-    const { id, role } = req;
+    const { id, role } = req; // Assuming 'id' and 'role' are attached by authentication middleware
     const {
       cartItems,
       totalAmount,
@@ -408,27 +763,43 @@ class orderController {
       finalAmount,
       party,
       partyId,
-      value,
+      value, // 'value' is currently used only for startDate
       delivery,
       service,
+      remark, // Added remark to destructuring
     } = req.body;
-    if (role === "staff") {
-      var { branchId } = await staffModel.findById(id);
-      var { companyId } = await staffModel.findById(id);
-      var { name } = await staffModel.findById(id);
-    } else {
-      var { companyId } = await ownerModel.findById(id);
-      var { name } = await ownerModel.findById(id);
-    }
 
-    if (value?.startDate) {
-      var tempDate = moment(value.startDate).format("YYYY-MM-DD");
-    } else {
-      var tempDate = moment(Date.now()).format("YYYY-MM-DD");
-    }
+    let generatedByUserName;
+    let companyId;
+    let branchId = null; // Initialize as null for cases where staff is not applicable
+
     try {
+      if (role === "staff") {
+        const staff = await staffModel.findById(id);
+        if (!staff) {
+          return responseReturn(res, 404, { error: "Staff user not found." });
+        }
+        branchId = staff.branchId;
+        companyId = staff.companyId;
+        generatedByUserName = staff.name;
+      } else {
+        // Assuming 'owner' role or similar for non-staff
+        const owner = await ownerModel.findById(id);
+        if (!owner) {
+          return responseReturn(res, 404, { error: "Owner user not found." });
+        }
+        companyId = owner.companyId;
+        generatedByUserName = owner.name;
+      }
+
+      // Determine the date for the draft
+      const tempDate = value?.startDate
+        ? moment(value.startDate).toDate() // Convert to Date object if startDate exists
+        : new Date(); // Use new Date() to capture current timestamp
+
+      // Create the draft entry
       const draft = await draftModel.create({
-        generatedBy: name,
+        generatedBy: generatedByUserName,
         party: party,
         cartItems,
         totalAmount,
@@ -438,23 +809,33 @@ class orderController {
         delivery,
         service,
         date: tempDate,
+        remark, // Saved remark
         partyId,
         companyId: companyId,
+        ...(branchId && { branchId }), // Conditionally add branchId if it exists
       });
 
+      // Update the table position
       const table = await tableModel.findById(partyId);
+      if (!table) {
+        console.warn(
+          `Table with ID ${partyId} not found for draft ${draft._id}.`
+        );
+      } else {
+        table.position = "booked";
+        await table.save();
+      }
 
-      table.position = "booked";
-
-      await table.save();
       responseReturn(res, 201, {
         draft,
         message: "Pre-order generated successfully",
       });
     } catch (error) {
-      responseReturn(res, 500, { error: "Internal server error" });
+      console.error("Error in make_draft:", error); // Log the actual error for debugging
+      responseReturn(res, 500, { error: "Internal server error." });
     }
   };
+
   get_company_drafts = async (req, res) => {
     const { id } = req;
     var { companyId } = await ownerModel.findById(id);
@@ -1130,27 +1511,131 @@ class orderController {
       // }
     }
   };
+  // all_programs = async (req, res) => {
+  //   const { id } = req;
+
+  //   var { companyId } = await ownerModel.findById(id);
+  //   try {
+  //     const programs = await programModel
+  //       .find({ companyId: companyId })
+  //       .populate("guestId")
+  //       .sort({ createdAt: -1 });
+  //     const totalPrograms = await programModel
+  //       .find({ companyId: companyId })
+  //       .countDocuments();
+
+  //     responseReturn(res, 200, {
+  //       programs,
+  //       totalPrograms,
+  //     });
+  //   } catch (error) {
+  //     responseReturn(res, 500, { error: "Internal server error" });
+  //   }
+  // };
+
   all_programs = async (req, res) => {
-    const { id } = req;
-
-    var { companyId } = await ownerModel.findById(id);
     try {
-      const programs = await programModel
-        .find({ companyId: companyId })
-        .sort({ createdAt: -1 });
-      const totalPrograms = await programModel
-        .find({ companyId: companyId })
-        .countDocuments();
+      const { id, role } = req;
+      const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+      const itemsPerPage = Math.min(
+        100,
+        Math.max(1, parseInt(req.query.perPage) || 10)
+      );
+      const statusFilter = req.query.status;
+      const searchQuery =
+        typeof req.query.searchQuery === "string"
+          ? req.query.searchQuery.trim()
+          : "";
+      console.log(searchQuery);
+      // Get company ID based on role
+      let companyId;
+      if (role === "staff") {
+        const staff = await staffModel.findById(id).select("companyId");
+        if (!staff)
+          return responseReturn(res, 404, { message: "Staff not found" });
+        companyId = staff.companyId;
+      } else {
+        const owner = await ownerModel.findById(id).select("companyId");
+        if (!owner)
+          return responseReturn(res, 404, { message: "Owner not found" });
+        companyId = owner.companyId;
+      }
 
-      responseReturn(res, 200, {
-        programs,
+      // Build the base query
+      const query = { companyId };
+
+      // Add status filter if valid
+      if (statusFilter && statusFilter !== "all") {
+        query.status = statusFilter;
+      }
+
+      // Enhanced search functionality
+      if (searchQuery) {
+        // First try to find matching guests
+        const matchingGuests = await guestModel
+          .find({
+            companyId,
+            $or: [
+              { name: { $regex: searchQuery, $options: "i" } },
+              { mobile: { $regex: searchQuery, $options: "i" } },
+            ],
+          })
+          .select("_id");
+
+        // Build search conditions
+        const searchConditions = [
+          { source: { $regex: searchQuery, $options: "i" } },
+          { remark: { $regex: searchQuery, $options: "i" } },
+        ];
+
+        // If we found matching guests, add their IDs to search conditions
+        if (matchingGuests.length > 0) {
+          searchConditions.push({
+            guestId: { $in: matchingGuests.map((g) => g._id) },
+          });
+        }
+
+        query.$or = searchConditions;
+      }
+
+      // Execute queries in parallel
+      const [programs, totalPrograms] = await Promise.all([
+        programModel
+          .find(query)
+          .populate({
+            path: "guestId",
+            select: "name mobile address",
+          })
+          .sort({ createdAt: -1 })
+          .skip((currentPage - 1) * itemsPerPage)
+          .limit(itemsPerPage)
+          .lean(),
+
+        programModel.countDocuments(query),
+      ]);
+
+      // Format the response
+      const response = {
         totalPrograms,
-      });
+        currentPage,
+        totalPages: Math.ceil(totalPrograms / itemsPerPage),
+        programs: programs.map((res) => ({
+          ...res,
+          guestName: res.guestId?.name || "Unknown Guest",
+          guestMobile: res.guestId?.mobile || "",
+        })),
+      };
+      // Debug log
+      return responseReturn(res, 200, response);
     } catch (error) {
-      responseReturn(res, 500, { error: "Internal server error" });
+      console.error("Search error:", error);
+      return responseReturn(res, 500, {
+        message: "Internal server error",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
     }
   };
-
   get_a_program = async (req, res) => {
     const { programId } = req.params;
     try {
@@ -1537,7 +2022,6 @@ class orderController {
       remark,
       billTransfer, // This should be the roomId (ObjectId) if selected
     } = req.body;
-
     let companyId, generatedByName, branchId;
 
     try {
@@ -1611,6 +2095,24 @@ class orderController {
         paidInfo && paidInfo.length > 0
           ? Number(paidInfo[paidInfo.length - 1].paid)
           : 0;
+
+      const getRes = restaurants?.reduce(
+        (n, { restaurantAmount }) => n + restaurantAmount,
+        0
+      );
+      const updateRes =
+        getRes > 0
+          ? others // Convert to Date object if startDate exists
+          : null;
+
+      const getOther = others?.reduce(
+        (n, { otherAmount }) => n + otherAmount,
+        0
+      );
+      const updateOthers =
+        getOther > 0
+          ? others // Convert to Date object if startDate exists
+          : null;
 
       // billTransfer should be an ObjectId of the room, not its name.
       // The frontend should send the room's _id if a bill transfer is selected.
@@ -1695,8 +2197,8 @@ class orderController {
         generatedBy: generatedByName,
         roomDetails: validatedRoomDetails, // Use the validated roomDetails array
         // Use others and restaurants directly as they are now arrays from frontend
-        others: others,
-        restaurants: restaurants,
+        others: updateOthers,
+        restaurants: updateRes,
         totalAmount,
         totalGuest,
         discount: Number(discount),
@@ -1776,34 +2278,120 @@ class orderController {
       });
     }
   };
+
   all_reservations = async (req, res) => {
-    const { id } = req;
-
-    var { companyId } = await ownerModel.findById(id);
     try {
-      const reservations = await reservationModel
-        .find({ companyId: companyId, status: { $ne: "cancel" } })
-        .populate("residentId")
-        .populate({
-          path: "roomDetails.roomId",
-          populate: {
-            path: "categoryId", // Populate category inside the room
-          },
-        })
-        .sort({ createdAt: -1 });
-      const totalReservations = await reservationModel
-        .find({ companyId: companyId })
-        .countDocuments();
+      const { id, role } = req;
+      const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+      const itemsPerPage = Math.min(
+        100,
+        Math.max(1, parseInt(req.query.perPage) || 10)
+      );
+      const statusFilter = req.query.status;
+      const searchQuery =
+        typeof req.query.searchQuery === "string"
+          ? req.query.searchQuery.trim()
+          : "";
 
-      responseReturn(res, 200, {
-        reservations,
+      // Get company ID based on role
+      let companyId;
+      if (role === "staff") {
+        const staff = await staffModel.findById(id).select("companyId");
+        if (!staff)
+          return responseReturn(res, 404, { message: "Staff not found" });
+        companyId = staff.companyId;
+      } else {
+        const owner = await ownerModel.findById(id).select("companyId");
+        if (!owner)
+          return responseReturn(res, 404, { message: "Owner not found" });
+        companyId = owner.companyId;
+      }
+
+      // Build the base query
+      const query = { companyId };
+
+      // Add status filter if valid
+      if (statusFilter && statusFilter !== "all") {
+        query.status = statusFilter;
+      }
+
+      // Enhanced search functionality
+      if (searchQuery) {
+        // First try to find matching guests
+        const matchingGuests = await guestModel
+          .find({
+            companyId,
+            $or: [
+              { name: { $regex: searchQuery, $options: "i" } },
+              { mobile: { $regex: searchQuery, $options: "i" } },
+            ],
+          })
+          .select("_id");
+
+        // Build search conditions
+        const searchConditions = [
+          { source: { $regex: searchQuery, $options: "i" } },
+          { remark: { $regex: searchQuery, $options: "i" } },
+        ];
+
+        // If we found matching guests, add their IDs to search conditions
+        if (matchingGuests.length > 0) {
+          searchConditions.push({
+            residentId: { $in: matchingGuests.map((g) => g._id) },
+          });
+        }
+
+        query.$or = searchConditions;
+      }
+
+      // Execute queries in parallel
+      const [reservations, totalReservations] = await Promise.all([
+        reservationModel
+          .find(query)
+          .populate({
+            path: "residentId",
+            select: "name mobile address",
+          })
+          .populate({
+            path: "roomDetails.roomId",
+            select: "name category",
+          })
+          .sort({ createdAt: -1 })
+          .skip((currentPage - 1) * itemsPerPage)
+          .limit(itemsPerPage)
+          .lean(),
+
+        reservationModel.countDocuments(query),
+      ]);
+
+      // Format the response
+      const response = {
         totalReservations,
-      });
+        currentPage,
+        totalPages: Math.ceil(totalReservations / itemsPerPage),
+        reservations: reservations.map((res) => ({
+          ...res,
+          guestName: res.residentId?.name || "Unknown Guest",
+          guestMobile: res.residentId?.mobile || "",
+          rooms:
+            res.roomDetails?.map((room) => ({
+              id: room.roomId?._id,
+              name: room.roomId?.name || "Unknown Room",
+              category: room.roomId?.category || "Unknown",
+            })) || [],
+        })),
+      };
+      // Debug log
+      return responseReturn(res, 200, response);
     } catch (error) {
-      responseReturn(res, 500, { error: "Internal server error" });
+      console.error("Search error:", error);
+      return responseReturn(res, 500, {
+        message: "Internal server error",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
     }
   };
-
   get_a_reservation = async (req, res) => {
     const { reservationId } = req.params;
     try {
@@ -1827,7 +2415,7 @@ class orderController {
   update_reservation_status = async (req, res) => {
     const { reservationId } = req.params;
     const { status } = req.body;
-
+    console.log(reservationId);
     try {
       const validStatuses = ["will_check", "check_in", "checked_out", "cancel"];
       if (!validStatuses.includes(status)) {
@@ -2010,6 +2598,7 @@ class orderController {
             "Required financial accounts not found. Please set up 'hot_sales_account', 'discount', and 'cash_hotel' parties.",
         });
       }
+      console.log(reservationId);
 
       // Fetch the reservation being updated/cancelled
       const existingReservation = await reservationModel

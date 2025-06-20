@@ -8,7 +8,7 @@ import HotelInvoice from "./HotelInvoice"; // Assuming this will be updated to h
 import {
   get_a_guest,
   guest_add,
-  hotel_guests_get,
+  guests_get,
   update_reservation,
   new_reservation, // Import new_reservation action
   get_a_reservation, // Action to fetch specific reservation for edit mode
@@ -140,7 +140,7 @@ function ReservationForm() {
     );
     // Fetch guests again after a short delay to get the newly added guest
     setTimeout(() => {
-      dispatch(hotel_guests_get());
+      dispatch(guests_get());
     }, 1000);
   };
 
@@ -300,7 +300,7 @@ function ReservationForm() {
   useEffect(() => {
     if (isEditMode && paramReservationId) {
       dispatch(get_a_reservation(paramReservationId));
-      dispatch(hotel_guests_get()); // Ensure guests are fetched for dropdown
+      dispatch(guests_get()); // Ensure guests are fetched for dropdown
     } else if (!isEditMode) {
       // Initialize for new reservation mode
       setFormData({
@@ -339,7 +339,7 @@ function ReservationForm() {
         // Fetch room details to add it to roomSelections initially
         dispatch(get_a_room(initialRoomIdFromQuery));
       }
-      dispatch(hotel_guests_get());
+      dispatch(guests_get());
     }
   }, [
     isEditMode,
@@ -427,7 +427,7 @@ function ReservationForm() {
   // Fetch rooms (available & booked) based on mode and dates
   useEffect(() => {
     // Always fetch all guests
-    dispatch(hotel_guests_get());
+    dispatch(guests_get());
 
     if (isEditMode && reservation?._id) {
       // In edit mode, fetch rooms considering the current reservation

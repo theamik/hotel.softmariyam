@@ -20,6 +20,10 @@ const orderSchema = new Schema(
       type: String,
       required: true,
     },
+    partyId: {
+      type: String,
+      required: true,
+    },
     generatedBy: {
       type: String,
       required: true,
@@ -55,6 +59,15 @@ const orderSchema = new Schema(
     date: {
       type: String,
       required: true,
+    },
+    remark: {
+      // Added remark field
+      type: String,
+      default: "", // Optional, provide a default empty string
+    },
+    status: {
+      type: String,
+      default: "due",
     },
   },
   { timestamps: true }

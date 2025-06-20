@@ -17,6 +17,7 @@ import {
   place_order,
   pre_order,
   remove_pre_order,
+  update_order_status,
   update_program,
 } from "../Actions/orderAction";
 
@@ -127,6 +128,18 @@ export const orderSlice = createSlice({
       .addCase(get_a_order.rejected, (state, action) => {
         state.loader = false;
         state.errorMessage = action.payload.error;
+      })
+      .addCase(update_order_status.pending, (state) => {
+        state.loader = true;
+      })
+      .addCase(update_order_status.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+      })
+      .addCase(update_order_status.rejected, (state, action) => {
+        state.loader = false;
+        state.errorMessage = action.payload.error;
+        state.errorMessage = action.payload.message;
       })
       .addCase(cancel_order.fulfilled, (state, action) => {
         state.loader = false;

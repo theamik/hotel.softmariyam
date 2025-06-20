@@ -90,6 +90,15 @@ function App() {
               element={
                 <>
                   <PageTitle title="Overview | Soft Mariyam" />
+                  <HotelReport />
+                </>
+              }
+            />
+            <Route
+              path="/hotel/dashboard"
+              element={
+                <>
+                  <PageTitle title="Hotel Dashboard | Soft Mariyam" />
                   <ECommerce />
                 </>
               }
@@ -190,6 +199,15 @@ function App() {
                 <>
                   <PageTitle title="Hotel Invoice | Soft Mariyam" />
                   <HotelInvoice />
+                </>
+              }
+            />
+            <Route
+              path="/restaurant/Dashboard"
+              element={
+                <>
+                  <PageTitle title="Restaurant Dashboard | Soft Mariyam" />
+                  <ECommerce />
                 </>
               }
             />

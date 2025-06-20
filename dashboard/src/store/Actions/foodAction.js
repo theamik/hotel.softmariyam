@@ -343,12 +343,16 @@ export const guests_get = createAsyncThunk(
 );
 
 export const hotel_guests_get = createAsyncThunk(
-  "guest/hotel-guests-get",
-  async (_, { rejectWithValue, fulfillWithValue }) => {
+  "hotel/guests-get",
+  async (
+    { page, perPage, searchQuery, under },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
     try {
-      const { data } = await api.get("/hotel-guests-get", {
-        withCredentials: true,
-      });
+      const { data } = await api.get(
+        `/hotel-guests-get?under=${under}&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        { withCredentials: true }
+      );
       return fulfillWithValue(data);
     } catch (error) {
       return rejectWithValue(error.response.data);
@@ -356,6 +360,78 @@ export const hotel_guests_get = createAsyncThunk(
   }
 );
 
+// New async thunks for specific guest statuses - YOU MUST ADD THESE
+export const available_guests_get = createAsyncThunk(
+  "hotel/available-guests-get",
+  async (
+    { page, perPage, searchQuery, under },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/hotel-guests-get?status=available&under=${under}&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        { withCredentials: true }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const confirmed_guests_get = createAsyncThunk(
+  "hotel/confirmed-guests-get",
+  async (
+    { page, perPage, searchQuery, under },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/hotel-guests-get?status=confirmed&under=${under}&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        { withCredentials: true }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const finished_guests_get = createAsyncThunk(
+  "hotel/finished-guests-get",
+  async (
+    { page, perPage, searchQuery, under },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/hotel-guests-get?status=finished&under=${under}&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        { withCredentials: true }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const cancelled_guests_get = createAsyncThunk(
+  "hotel/cancelled-guests-get",
+  async (
+    { page, perPage, searchQuery, under },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/hotel-guests-get?status=cancelled&under=${under}&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        { withCredentials: true }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
 export const get_a_guest = createAsyncThunk(
   "guest/get_guest",
   async (guestId, { rejectWithValue, fulfillWithValue }) => {
@@ -428,11 +504,97 @@ export const new_reservation = createAsyncThunk(
 
 export const reservations_get = createAsyncThunk(
   "hotel/reservations-get",
-  async (_, { rejectWithValue, fulfillWithValue }) => {
+  async (
+    { page, perPage, searchQuery },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
     try {
-      const { data } = await api.get("/order/reservations-get", {
-        withCredentials: true,
-      });
+      const { data } = await api.get(
+        `/order/reservations-get?page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const cancel_reservations_get = createAsyncThunk(
+  "hotel/cancel-reservations-get",
+  async (
+    { page, perPage, searchQuery },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/order/reservations-get?status=cancel&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const will_check_reservations_get = createAsyncThunk(
+  "hotel/will-check-reservations-get",
+  async (
+    { page, perPage, searchQuery },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/order/reservations-get?status=will_check&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const check_in_reservations_get = createAsyncThunk(
+  "hotel/check-in-reservations-get",
+  async (
+    { page, perPage, searchQuery },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/order/reservations-get?status=check_in&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
+export const check_out_reservations_get = createAsyncThunk(
+  "hotel/check-out-reservations-get",
+  async (
+    { page, perPage, searchQuery },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/order/reservations-get?status=checked_out&=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        {
+          withCredentials: true,
+        }
+      );
       return fulfillWithValue(data);
     } catch (error) {
       return rejectWithValue(error.response.data);
