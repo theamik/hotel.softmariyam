@@ -2166,17 +2166,21 @@ class orderController {
 
       // It's a good practice to validate the structure of each roomDetail here
       // For example, ensuring roomId is a valid ObjectId, and rates are numbers.
+
       const validatedRoomDetails = roomDetails.map((room) => {
         if (
           !room.roomId ||
-          !moment.isMoment(moment(room.checkInDate)) ||
-          !moment.isMoment(moment(room.checkOutDate)) ||
+          !moment(room.checkOutDate).isValid() || // Correct way to check if checkOutDate is valid
+          (room.checkInDate !== undefined &&
+            !moment(room.checkInDate).isValid()) || // Only validate checkInDate if it exists, and use isValid()
           typeof room.rackRate !== "number" ||
           typeof room.discountRate !== "number" ||
           !room.category ||
           typeof room.dayStay !== "number"
         ) {
-          throw new Error("Invalid room detail structure provided."); // Or return a specific error message
+          throw new Error(
+            "Invalid room detail structure or date format provided for a room."
+          ); // Or return a specific error message
         }
         return {
           roomId: room.roomId,
@@ -2184,12 +2188,21 @@ class orderController {
           discountRate: room.discountRate,
           category: room.category,
           dayStay: room.dayStay,
-          // If individual checkInDate/checkOutDate are sent for each room in roomDetails, include them here:
-          // checkInDate: moment(room.checkInDate).format("YYYY-MM-DD"),
-          // checkOutDate: moment(room.checkOutDate).format("YYYY-MM-DD"),
+          checkOutDate: moment(room.checkOutDate).format("YYYY-MM-DD"), // Ensure it's formatted as a string for the backend
+          // Only include checkInDate if it's sent from the frontend and required by the backend
+          ...(room.checkInDate && {
+            checkInDate: moment(room.checkInDate).format("YYYY-MM-DD"),
+          }),
         };
       });
-
+      let updatedPaidInfo = [];
+      if (paidInfo[0]?.paid > 0) {
+        updatedPaidInfo.push({
+          paid: paidInfo[0]?.paid,
+          paidDetails: paidInfo[0]?.paidDetails,
+          currentDate: paidInfo[0]?.currentDate,
+        });
+      }
       const reservationData = {
         reservationNo: newReservationId,
         transactionId: mainTransaction._id,
@@ -2204,7 +2217,7 @@ class orderController {
         discount: Number(discount),
         finalAmount,
         due,
-        paidInfo,
+        paidInfo: updatedPaidInfo,
         bookedDate: tempDate,
         checkInDate: checkInDate,
         checkOutDate: checkOutDate,
@@ -2834,7 +2847,15 @@ class orderController {
           createdTransactionIds.push(discountTransaction[0]._id); // If using array syntax for create
         }
       }
-
+      const existingPaidInfo = existingReservation?.paidInfo || [];
+      let updatedPaidInfo = [...existingPaidInfo];
+      if (paidInfo[0]?.paid > 0) {
+        updatedPaidInfo.push({
+          paid: paidInfo[0]?.paid,
+          paidDetails: paidInfo[0]?.paidDetails,
+          currentDate: paidInfo[0]?.currentDate,
+        });
+      }
       // --- Prepare Update Object for Reservation ---
       const reservationUpdateFields = {
         residentId: guestId,
@@ -2853,6 +2874,7 @@ class orderController {
           discountRate: Number(roomDet.discountRate),
           category: roomDet.category,
           dayStay: Number(roomDet.dayStay),
+          checkOutDate: moment(roomDet.checkOutDate).format("YYYY-MM-DD"),
         })),
 
         others:
@@ -2879,7 +2901,7 @@ class orderController {
         discount: Number(discount),
         due: Number(due),
         finalAmount: Number(finalAmount),
-        paidInfo: paidInfo,
+        paidInfo: updatedPaidInfo,
       };
 
       // If status is cancel, remark is required

@@ -76,7 +76,7 @@ const HotelInvoiceReady = () => {
   // Calculate total room charges
   const totalRoomCharges =
     reservation?.roomDetails?.reduce((sum, room) => {
-      const discountRate = Number(room?.roomId?.categoryId?.discountRate) || 0;
+      const discountRate = Number(room?.discountRate) || 0;
       const dayStay = Number(room?.dayStay) || 0;
       return sum + discountRate * dayStay;
     }, 0) || 0;
@@ -313,10 +313,7 @@ const HotelInvoiceReady = () => {
                           Rack Rate
                         </h5>
                         <p className="sm:text-end font-bold print:font-bold print:text-black">
-                          Tk{" "}
-                          {(
-                            Number(i?.roomId?.categoryId?.rackRate) || 0
-                          ).toFixed(2)}
+                          Tk {(Number(i?.rackRate) || 0).toFixed(2)}
                         </p>
                       </div>
                       <div>
@@ -324,10 +321,7 @@ const HotelInvoiceReady = () => {
                           Discount Rate
                         </h5>
                         <p className="sm:text-end font-bold print:font-bold print:text-black">
-                          Tk{" "}
-                          {(
-                            Number(i?.roomId?.categoryId?.discountRate) || 0
-                          ).toFixed(2)}
+                          Tk {(Number(i?.discountRate) || 0).toFixed(2)}
                         </p>
                       </div>
                       <div>
@@ -337,8 +331,7 @@ const HotelInvoiceReady = () => {
                         <p className="sm:text-end font-bold print:font-bold print:text-black">
                           Tk{" "}
                           {(
-                            Number(i?.roomId?.categoryId?.discountRate) *
-                              Number(i?.dayStay) || 0
+                            Number(i?.discountRate) * Number(i?.dayStay) || 0
                           ).toFixed(2)}
                         </p>
                       </div>

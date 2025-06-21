@@ -57,6 +57,8 @@ interface ReservationObject {
       };
     };
     dayStay?: number;
+    rackRate?: number;
+    discountRate?: number;
   }[]; // Updated to match HotelInvoiceReady nested structure
   others?: OtherChargeProp[];
   restaurants?: RestaurantChargeProp[];
@@ -152,8 +154,8 @@ const Chart: React.FC<ChartProps> = ({
           category: r?.roomId?.categoryId?.name || "N/A",
           roomName: r?.roomId?.name || "N/A",
           dayStay: Number(r?.dayStay) || 0,
-          rackRate: Number(r?.roomId?.categoryId?.rackRate) || 0,
-          discountRate: Number(r?.roomId?.categoryId?.discountRate) || 0,
+          rackRate: Number(r?.rackRate) || 0,
+          discountRate: Number(r?.discountRate) || 0,
         }))
       : [];
 

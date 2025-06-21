@@ -52,6 +52,10 @@ const reservationModel = new Schema(
           type: String,
           required: true,
         },
+        checkOutDate: {
+          type: String,
+          required: true,
+        },
         dayStay: {
           type: Number,
           required: true,

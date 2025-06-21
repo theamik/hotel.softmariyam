@@ -1,11 +1,6 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import Select from "react-select";
-import {
-  useNavigate,
-  useParams,
-  useLocation,
-  useSearchParams,
-} from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom"; // Import useLocation
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { useDispatch, useSelector } from "react-redux";
@@ -15,8 +10,8 @@ import {
   guest_add,
   guests_get,
   update_reservation,
-  new_reservation,
-  get_a_reservation,
+  new_reservation, // Import new_reservation action
+  get_a_reservation, // Action to fetch specific reservation for edit mode
 } from "../../store/Actions/foodAction";
 import toast from "react-hot-toast";
 import { messageClear } from "../../store/Reducers/foodReducer";
@@ -24,12 +19,13 @@ import {
   available_rooms_get,
   booked_rooms_get,
   get_a_room,
-  available_rooms_get_for_edit,
-  booked_rooms_get_for_edit,
+  available_rooms_get_for_edit, // Used for fetching rooms for edit mode
+  booked_rooms_get_for_edit, // Used for fetching booked rooms for edit mode
 } from "../../store/Actions/roomAction";
 import { validatePhoneNumber } from "../../utils/validations";
 import queryString from "query-string";
-import moment from "moment"; // Import moment for consistent date handling
+import moment from "moment";
+import { useSearchParams } from "react-router-dom"; // Import moment for consistent date handling
 
 // Constants
 const RESERVATION_STATUS = [
@@ -61,41 +57,14 @@ function ReservationForm() {
 
   const paramReservationId = getCleanReservationId();
   const isEditMode = !!paramReservationId;
+  // Get initial room and check-in date from query parameters for new reservation creation
+
   // Redux state
   const { guests, reservation, guest, errorMessage, successMessage } =
     useSelector((state) => state.food);
-  const { rooms, room, bookedRooms } = useSelector((state) => state.room);
+  const { rooms, room, bookedRooms } = useSelector((state) => state.room); // `rooms` will contain available rooms + current reservation's room
 
-  // Dispatch hook
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-
-  // Utility functions (defined at the top for proper scope)
-  const getNextDate = useCallback((date, offset = 1) => {
-    const next = new Date(date);
-    next.setDate(next.getDate() + offset);
-    return next;
-  }, []);
-
-  const calculateDayGap = useCallback((start, end) => {
-    // Ensure both dates are valid before calculating
-    if (!start || !end || isNaN(start.getTime()) || isNaN(end.getTime())) {
-      return 0; // Or handle error appropriately
-    }
-    const oneDay = 1000 * 60 * 60 * 24;
-    const startTime = new Date(start).setHours(0, 0, 0, 0);
-    const endTime = new Date(end).setHours(0, 0, 0, 0);
-    return Math.max(1, Math.round((endTime - startTime) / oneDay));
-  }, []);
-
-  // Utility to safely convert to Date object or null
-  const safeDate = useCallback((dateInput) => {
-    if (!dateInput) return null; // Handle null/undefined/empty string
-    const d = new Date(dateInput);
-    return isNaN(d.getTime()) ? null : d; // Return null for 'Invalid Date'
-  }, []);
-
-  // State Initialization
+  // State Initialization (Conditional based on mode)
   const [formData, setFormData] = useState({
     name: "",
     address: "",
@@ -113,21 +82,36 @@ function ReservationForm() {
 
   const [selectedStatus, setSelectedStatus] = useState(null);
   const [selectedGuest, setSelectedGuest] = useState(null);
-  const [selectedRoomToAdd, setSelectedRoomToAdd] = useState(null);
-  const [selectedBookedRoom, setSelectedBookedRoom] = useState(null);
+  const [selectedRoomToAdd, setSelectedRoomToAdd] = useState(null); // For adding rooms in multi-room setup
+  const [selectedBookedRoom, setSelectedBookedRoom] = useState(null); // For bill transfer
   const [newPaid, setPaid] = useState(0);
   const [discount, setDiscount] = useState(0);
   const [due, setDue] = useState(0);
   const [totalAmount, setTotalAmount] = useState(0);
   const [finalAmount, setFinalAmount] = useState(0);
-  const [dayStay, setDayStay] = useState(1); // Global dayStay for primary reservation dates
+  const [dayStay, setDayStay] = useState(1);
   const [startDate, setStartDate] = useState(new Date());
   const [endDate, setEndDate] = useState(getNextDate(new Date(), 1));
-  const [updatedPaidInfo, setUpdatedPaidInfo] = useState([]); // This remains the 'global' endDate for primary reservation dates
-  // Uses getNextDate here
 
   // State to hold multiple selected rooms for the reservation
   const [roomSelections, setRoomSelections] = useState([]);
+
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  // Utility functions
+  function getNextDate(date, offset = 1) {
+    const next = new Date(date);
+    next.setDate(next.getDate() + offset);
+    return next;
+  }
+
+  function calculateDayGap(start, end) {
+    const oneDay = 1000 * 60 * 60 * 24;
+    const startTime = new Date(start).setHours(0, 0, 0, 0);
+    const endTime = new Date(end).setHours(0, 0, 0, 0);
+    return Math.max(1, Math.round((endTime - startTime) / oneDay));
+  }
 
   // Handlers
   const handleInputChange = (e) => {
@@ -143,7 +127,7 @@ function ReservationForm() {
     if (value === "") {
       setFormData((prev) => ({
         ...prev,
-        [name]: "",
+        [name]: "", // Keep empty for UI, will convert to number on submission
       }));
     } else if (!isNaN(value)) {
       setFormData((prev) => ({
@@ -168,13 +152,16 @@ function ReservationForm() {
         description: formData.description,
       })
     );
+    // Fetch guests again after a short delay to get the newly added guest
     setTimeout(() => {
       dispatch(guests_get());
     }, 1000);
   };
 
-  const handleAddRoom = useCallback(() => {
+  // Handler to add a room to the roomSelections array
+  const handleAddRoom = () => {
     if (selectedRoomToAdd && room) {
+      // Check if the room is already in the selections
       const isRoomAlreadyAdded = roomSelections.some(
         (selRoom) => selRoom.roomId === selectedRoomToAdd.value
       );
@@ -184,81 +171,34 @@ function ReservationForm() {
         return;
       }
 
+      // Add the selected room's details to the roomSelections array
       setRoomSelections((prev) => [
         ...prev,
         {
           roomId: selectedRoomToAdd.value,
-          roomName: selectedRoomToAdd.label,
+          roomName: selectedRoomToAdd.label, // Storing name for display purposes
           rackRate: room.categoryId?.rackRate || 0,
           discountRate: room.categoryId?.discountRate || 0,
           category: room.categoryId?.name,
-          checkOutDate: endDate, // Initial check-out date for this specific room
-          dayStay: calculateDayGap(startDate, endDate), // Initial dayStay for this room
+          dayStay: dayStay, // Using the global dayStay for now, as per schema
         },
       ]);
+      // Reset the dropdown after adding
       setSelectedRoomToAdd(null);
     } else {
       toast.error("Please select a room to add.");
     }
-  }, [
-    selectedRoomToAdd,
-    room,
-    roomSelections,
-    endDate,
-    startDate,
-    calculateDayGap,
-  ]);
+  };
 
-  const handleRemoveRoom = useCallback((roomIdToRemove) => {
+  // Handler to remove a room from the roomSelections array
+  const handleRemoveRoom = (roomIdToRemove) => {
     setRoomSelections((prev) =>
       prev.filter((room) => room.roomId !== roomIdToRemove)
     );
-  }, []);
-
-  const handleRoomOfferRateChange = useCallback((roomId, newRate) => {
-    setRoomSelections((prev) =>
-      prev.map((roomSel) =>
-        roomSel.roomId === roomId
-          ? { ...roomSel, discountRate: Number(newRate) }
-          : roomSel
-      )
-    );
-  }, []);
-
-  const handleRoomCheckOutDateChange = useCallback(
-    (roomId, newDate) => {
-      setRoomSelections((prev) =>
-        prev.map((roomSel) =>
-          roomSel.roomId === roomId
-            ? {
-                ...roomSel,
-                checkOutDate: newDate,
-                dayStay: calculateDayGap(startDate, newDate),
-              }
-            : roomSel
-        )
-      );
-    },
-    [startDate, calculateDayGap]
-  );
-
-  useEffect(() => {
-    let checkPaidInfo = [];
-
-    if (Number(newPaid) > 0) {
-      checkPaidInfo.push({
-        paid: Number(newPaid),
-        paidDetails: formData.paidDetails,
-        currentDate: new Date(),
-      });
-    }
-
-    setUpdatedPaidInfo(checkPaidInfo);
-  }, [reservation, newPaid, formData.paidDetails]);
+  };
 
   const reservationHandler = async (e) => {
     e.preventDefault();
-
     if (!selectedGuest?.value) {
       toast.error("Please select a guest");
       return;
@@ -274,11 +214,24 @@ function ReservationForm() {
       return;
     }
 
+    // Prepare paidInfo for submission
+    const existingPaidInfo = reservation?.paidInfo || [];
+    let updatedPaidInfo = [...existingPaidInfo];
+    if (Number(newPaid) > 0) {
+      updatedPaidInfo.push({
+        paid: Number(newPaid),
+        paidDetails: formData.paidDetails,
+        currentDate: new Date(),
+      });
+    }
+
+    // Determine final status
     const newStatus = selectedStatus?.value;
-    const currentStatus = reservation?.status;
+    const currentStatus = reservation?.status; // Only defined in edit mode
     let finalStatusToSend = newStatus;
 
     if (isEditMode) {
+      // Status transition validation for edit mode
       if (currentStatus === "checked_in" && newStatus === "will_check") {
         toast.error("Cannot change status from 'Checked In' to 'Will Check'.");
         return;
@@ -293,6 +246,7 @@ function ReservationForm() {
         return;
       }
     } else {
+      // Validation for new reservation
       const invalidStatusesForNewReservation = ["cancel", "checked_out"];
       if (invalidStatusesForNewReservation.includes(newStatus)) {
         toast.error(
@@ -300,18 +254,19 @@ function ReservationForm() {
         );
         return;
       }
+      // Default for new reservation if not explicitly checked_in or will_check
       if (newStatus !== "checked_in" && newStatus !== "will_check") {
         finalStatusToSend = "will_check";
       }
     }
 
+    // Prepare roomDetails array for the payload
     const roomDetailsPayload = roomSelections.map((roomSel) => ({
       roomId: roomSel.roomId,
       rackRate: Number(roomSel.rackRate),
       discountRate: Number(roomSel.discountRate),
       category: roomSel.category,
-      dayStay: roomSel.dayStay,
-      checkOutDate: moment(roomSel.checkOutDate).format("YYYY-MM-DD"),
+      dayStay: dayStay, // Using the global dayStay calculated from startDate/endDate
     }));
 
     const payload = {
@@ -340,7 +295,7 @@ function ReservationForm() {
       finalAmount: Number(finalAmount),
       status: finalStatusToSend,
       remark: formData.remark,
-      billTransfer: selectedBookedRoom?.value || null,
+      billTransfer: selectedBookedRoom?.value || null, // Ensure null if not selected
     };
 
     if (isEditMode) {
@@ -358,7 +313,7 @@ function ReservationForm() {
   useEffect(() => {
     if (isEditMode && paramReservationId) {
       dispatch(get_a_reservation(paramReservationId));
-      dispatch(guests_get());
+      dispatch(guests_get()); // Ensure guests are fetched for dropdown
     } else if (!isEditMode) {
       // Initialize for new reservation mode
       setFormData({
@@ -385,14 +340,16 @@ function ReservationForm() {
       setDayStay(1);
       setStartDate(new Date());
       setEndDate(getNextDate(new Date(), 1));
-      setRoomSelections([]);
+      setRoomSelections([]); // Empty for new reservation
 
+      // Handle initial room/date from query params for new reservation
       if (initialCheckInDateFromQuery) {
-        const parsedDate = safeDate(initialCheckInDateFromQuery);
-        setStartDate(parsedDate || new Date());
-        setEndDate(getNextDate(parsedDate || new Date(), 1));
+        const parsedDate = new Date(initialCheckInDateFromQuery);
+        setStartDate(parsedDate);
+        setEndDate(getNextDate(parsedDate, 1)); // Set default end date
       }
       if (initialRoomIdFromQuery) {
+        // Fetch room details to add it to roomSelections initially
         dispatch(get_a_room(initialRoomIdFromQuery));
       }
       dispatch(guests_get());
@@ -403,25 +360,14 @@ function ReservationForm() {
     dispatch,
     initialRoomIdFromQuery,
     initialCheckInDateFromQuery,
-    getNextDate,
-    safeDate,
   ]);
 
   // Effect to populate form data when a reservation is fetched (edit mode)
   useEffect(() => {
     if (reservation && isEditMode) {
-      const resStartDate = safeDate(reservation.startDate);
-      const resEndDate = safeDate(reservation.endDate);
-
-      setStartDate(resStartDate || new Date());
-      setEndDate(resEndDate || getNextDate(resStartDate || new Date(), 1));
-      setDayStay(
-        calculateDayGap(
-          resStartDate || new Date(),
-          resEndDate || getNextDate(resStartDate || new Date(), 1)
-        )
-      );
-
+      setStartDate(new Date(reservation.checkInDate));
+      setEndDate(new Date(reservation.checkOutDate));
+      setDayStay(reservation.roomDetails[0]?.dayStay || 1); // Adjust if multiple dayStays per room
       setDiscount(reservation.discount || 0);
 
       setFormData({
@@ -430,44 +376,39 @@ function ReservationForm() {
         mobile: reservation.residentId?.mobile || "",
         description: reservation.residentId?.description || "",
         source: reservation.source || "",
-        other: reservation.others?.[0]?.other || "",
+        other: reservation.others?.[0]?.other || "", // Assuming others/restaurants are arrays with one object
         otherAmount: reservation.others?.[0]?.otherAmount || 0,
         restaurant: reservation.restaurants?.[0]?.restaurant || "",
         restaurantAmount: reservation.restaurants?.[0]?.restaurantAmount || 0,
         remark: reservation.remark || "",
         totalGuest: reservation.totalGuest || 1,
-        paidDetails: "",
+        paidDetails: "", // New payments details will be added
       });
 
+      // Populate roomSelections for edit mode
       if (
         Array.isArray(reservation.roomDetails) &&
         reservation.roomDetails.length > 0
       ) {
         setRoomSelections(
           reservation.roomDetails.map((detail) => ({
-            roomId: detail.roomId?._id || detail.roomId,
-            roomName: detail.roomId?.name || "N/A",
+            roomId: detail.roomId?._id || detail.roomId, // Handle populated or unpopulated roomId
+            roomName: detail.roomId?.name || "N/A", // Assuming roomId is populated or has a name
             rackRate: detail.rackRate || 0,
             discountRate: detail.discountRate || 0,
-            category: detail.roomId?.categoryId?.name || "N/A", // Still storing this data, but it won't be rendered in the table
-            checkOutDate:
-              detail.checkOutDate || getNextDate(resStartDate || new Date(), 1), // Use parsed reservation endDate, or fallback
-            dayStay:
-              detail.dayStay ||
-              calculateDayGap(
-                resStartDate || new Date(),
-                resEndDate || getNextDate(resStartDate || new Date(), 1)
-              ),
+            category: detail.roomId?.categoryId?.name || "N/A", // Assuming category is populated
+            dayStay: detail.dayStay || 1,
           }))
         );
       } else {
-        setRoomSelections([]);
+        setRoomSelections([]); // Ensure it's an empty array if no rooms
       }
 
       setTotalAmount(reservation.totalAmount || 0);
       setDue(reservation.due || 0);
       setFinalAmount(reservation.finalAmount || 0);
 
+      // Set selected guest
       if (reservation.residentId) {
         setSelectedGuest({
           value: reservation.residentId._id,
@@ -475,25 +416,34 @@ function ReservationForm() {
         });
       }
 
+      // Set selected status
       if (reservation.status) {
         const statusOption = RESERVATION_STATUS.find(
           (s) => s.value === reservation.status
         );
         setSelectedStatus(statusOption);
       }
-    }
-  }, [reservation, isEditMode, safeDate, getNextDate, calculateDayGap]);
 
-  // Update global dayStay when global start or end date changes
+      // Set bill transfer room
+      if (reservation.billTransfer) {
+        // Need to fetch bookedRooms first for this to match
+        // This will be handled by the effect that fetches booked rooms
+      }
+    }
+  }, [reservation, isEditMode]);
+
+  // Update dayStay when start or end date changes
   useEffect(() => {
     setDayStay(calculateDayGap(startDate, endDate));
-  }, [startDate, endDate, calculateDayGap]);
+  }, [startDate, endDate]);
 
   // Fetch rooms (available & booked) based on mode and dates
   useEffect(() => {
+    // Always fetch all guests
     dispatch(guests_get());
 
     if (isEditMode && reservation?._id) {
+      // In edit mode, fetch rooms considering the current reservation
       dispatch(
         available_rooms_get_for_edit({
           startDate: startDate,
@@ -507,57 +457,28 @@ function ReservationForm() {
         })
       );
     } else {
-      dispatch(available_rooms_get({ startDate: startDate }));
-      dispatch(booked_rooms_get(startDate));
+      // In new mode, fetch all available rooms (excluding existing reservations)
+      dispatch(available_rooms_get({ startDate: startDate })); // Pass startDate for filtering
+      dispatch(booked_rooms_get(startDate)); // Pass startDate for filtering
     }
 
     if (endDate <= startDate) {
-      const newEndDate = getNextDate(startDate, 1);
-      setEndDate(newEndDate);
-      setRoomSelections((prev) =>
-        prev.map((roomSel) => ({
-          ...roomSel,
-          checkOutDate: newEndDate,
-          dayStay: calculateDayGap(startDate, newEndDate),
-        }))
-      );
-    } else {
-      setRoomSelections((prev) =>
-        prev.map((roomSel) => {
-          // Only update if the room's current checkout date is linked to the old global endDate
-          // or if it falls before the new global endDate.
-          if (
-            moment(roomSel.checkOutDate).isSame(moment(endDate), "day") ||
-            moment(roomSel.checkOutDate).isBefore(moment(startDate))
-          ) {
-            return {
-              ...roomSel,
-              checkOutDate: endDate,
-              dayStay: calculateDayGap(startDate, endDate),
-            };
-          }
-          return roomSel;
-        })
-      );
+      setEndDate(getNextDate(startDate, 1));
     }
-  }, [
-    dispatch,
-    startDate,
-    endDate,
-    isEditMode,
-    reservation?._id,
-    getNextDate,
-    calculateDayGap,
-  ]);
+  }, [dispatch, startDate, endDate, isEditMode, reservation?._id]);
 
+  // Effect to get details of a room selected in the ADD dropdown (new or edit mode)
+  // This helps populate rackRate/discountRate for the `room` state in Redux
   useEffect(() => {
     if (selectedRoomToAdd?.value) {
       dispatch(get_a_room(selectedRoomToAdd.value));
     } else if (initialRoomIdFromQuery && !room && !isEditMode) {
+      // If a room ID came from query params and it's new reservation mode, fetch its details
       dispatch(get_a_room(initialRoomIdFromQuery));
     }
   }, [selectedRoomToAdd, dispatch, initialRoomIdFromQuery, room, isEditMode]);
 
+  // Handle auto-adding initial room from query param
   useEffect(() => {
     if (
       initialRoomIdFromQuery &&
@@ -566,9 +487,10 @@ function ReservationForm() {
       room.name &&
       roomSelections.length === 0
     ) {
-      const isRoomAlreadyAdded = roomSelections.some((selRoom) =>
-        roomSelections.find((rs) => rs.roomId === room._id)
-      ); // Changed condition for clarity
+      // Only add if not already added and it's new reservation mode
+      const isRoomAlreadyAdded = roomSelections.some(
+        (selRoom) => selRoom.roomId === room._id
+      );
       if (!isRoomAlreadyAdded) {
         setRoomSelections([
           {
@@ -577,34 +499,39 @@ function ReservationForm() {
             rackRate: room.categoryId?.rackRate || 0,
             discountRate: room.categoryId?.discountRate || 0,
             category: room.categoryId?.name,
-            checkOutDate: endDate,
-            dayStay: calculateDayGap(startDate, endDate),
+            dayStay: dayStay,
           },
         ]);
+        // Clear query param room after adding to prevent re-adding on subsequent renders
+        // navigate(location.pathname, { replace: true }); // This removes the query param from URL
       }
     }
   }, [
     initialRoomIdFromQuery,
     room,
     isEditMode,
-    startDate,
-    endDate,
-    roomSelections.length,
-    calculateDayGap,
-    roomSelections, // Added roomSelections as dependency
+    dayStay,
+    roomSelections,
+    location.pathname,
+    navigate,
   ]);
 
-  // Calculate total amount whenever roomSelections, otherAmount, restaurantAmount change
+  // Calculate total amount whenever roomSelections, otherAmount, restaurantAmount, or dayStay change
   useEffect(() => {
     const roomsTotal = roomSelections.reduce(
-      (sum, room) => sum + Number(room.discountRate) * room.dayStay,
+      (sum, room) => sum + Number(room.discountRate) * dayStay,
       0
     );
     const additionalCharges =
       (Number(formData.otherAmount) || 0) +
       (Number(formData.restaurantAmount) || 0);
     setTotalAmount(roomsTotal + additionalCharges);
-  }, [roomSelections, formData.otherAmount, formData.restaurantAmount]);
+  }, [
+    roomSelections,
+    dayStay,
+    formData.otherAmount,
+    formData.restaurantAmount,
+  ]);
 
   // Calculate due and final amount
   useEffect(() => {
@@ -616,20 +543,15 @@ function ReservationForm() {
       : Number(newPaid);
 
     const calculatedDue = totalAmount - currentTotalPaid;
-    const calculatedFinal = calculatedDue - Number(discount);
+    const calculatedFinal = calculatedDue - Number(discount); // Ensure discount is a number
 
     setDue(calculatedDue);
     setFinalAmount(calculatedFinal);
   }, [totalAmount, newPaid, discount, reservation, isEditMode]);
 
-  // Auto-select guest, status, and bill transfer room when data is loaded (edit mode)
+  // Auto-select guest, main room, status, and bill transfer room when data is loaded (edit mode)
   useEffect(() => {
-    if (
-      isEditMode &&
-      reservation &&
-      guests.length > 0 &&
-      bookedRooms.length > 0
-    ) {
+    if (isEditMode && reservation && guests.length > 0 && rooms.length > 0) {
       // Set selected guest
       if (reservation.residentId) {
         const matchedGuest = guests.find(
@@ -652,7 +574,7 @@ function ReservationForm() {
       }
 
       // Set bill transfer room (needs bookedRooms to be fetched)
-      if (reservation.billTransfer) {
+      if (reservation.billTransfer && bookedRooms.length > 0) {
         const matchedBillTransferRoom = bookedRooms.find(
           (r) => r._id === reservation.billTransfer
         );
@@ -664,7 +586,7 @@ function ReservationForm() {
         }
       }
     }
-  }, [isEditMode, reservation, guests, bookedRooms]);
+  }, [isEditMode, reservation, guests, rooms, bookedRooms]); // Added bookedRooms to dependency
 
   // Handle success/error messages
   useEffect(() => {
@@ -674,23 +596,9 @@ function ReservationForm() {
     }
     if (successMessage) {
       toast.success(successMessage);
-      dispatch(messageClear());
-      dispatch(messageClear());
-      setSelectedStatus(null);
-      setSelectedGuest(null);
-      setPaid(0);
-      setDiscount(0);
-      setDue(0);
-      setTotalAmount(0);
-      setFinalAmount(0);
-      setDayStay(1);
-      setStartDate(new Date());
-      setEndDate(getNextDate(new Date(), 1));
-      setRoomSelections([]);
-      setFormData("");
-      navigate("/hotel/invoice");
+      dispatch(messageClear()); // Navigate to invoice with new reservation data
     }
-  }, [successMessage, errorMessage, dispatch]);
+  }, [successMessage, errorMessage, dispatch, navigate, isEditMode]);
 
   // Data preparation for dropdowns
   const guestOptions = guests.map((guest) => ({
@@ -700,7 +608,7 @@ function ReservationForm() {
 
   const roomOptions = rooms.map((room) => ({
     value: room._id,
-    label: `${room.name} (${room.categoryId?.name})`,
+    label: `${room.name} `, // Show room name and category
   }));
 
   const bookedRoomOptions = bookedRooms?.map((room) => ({
@@ -715,12 +623,7 @@ function ReservationForm() {
   ];
 
   // Check if check-in date is in the past for disabling changes
-  const isPastCheckIn =
-    moment(startDate).isBefore(moment().startOf("day"), "day") &&
-    moment(startDate).isAfter(
-      moment().subtract(1, "days").startOf("day"),
-      "day"
-    );
+  const isPastCheckIn = moment(startDate).isBefore(moment(), "day"); // Compares dates without time
 
   return (
     <div className="space-y-4">
@@ -746,7 +649,7 @@ function ReservationForm() {
                 placeholder={`Guest ${field}`}
                 className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-2.5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
               />
-              {field === "description" && (
+              {field === "description" && ( // Show button always, text changes based on guest
                 <button
                   className="inline-flex items-center justify-center rounded-full py-3 px-2.5 bg-primary text-center font-medium text-white hover:bg-opacity-90"
                   onClick={guestHandler}
@@ -761,20 +664,20 @@ function ReservationForm() {
 
       {/* Dates and Room Selection */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
-        {/* Check In Date (Global) */}
+        {/* Check In Date */}
         <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
           <div className="flex flex-col gap-2.5 p-2.5">
-            <p>Check In (Reservation)</p>
+            <p>Check In</p>
             <DatePicker
               selected={startDate}
               onChange={(date) => {
                 if (!isPastCheckIn) setStartDate(date);
               }}
-              minDate={moment().subtract(1, "days").toDate()}
+              minDate={new Date()} // Can't select a date before today for check-in
               className={`w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-2.5 text-black outline-none transition focus:border-primary active:border-primary ${
                 isPastCheckIn ? "bg-gray-100 cursor-not-allowed" : ""
               } dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary`}
-              readOnly={isEditMode && isPastCheckIn}
+              readOnly={isEditMode && isPastCheckIn} // Only readOnly if in edit mode and past date
             />
             {isEditMode && isPastCheckIn && (
               <p className="text-xs text-gray-500 mt-1">
@@ -784,14 +687,14 @@ function ReservationForm() {
           </div>
         </div>
 
-        {/* Check Out Date (Global) - Acts as default for new rooms */}
+        {/* Check Out Date */}
         <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
           <div className="flex flex-col gap-2.5 p-2.5">
-            <p>Check Out (Reservation Default)</p>
+            <p>Check Out</p>
             <DatePicker
               selected={endDate}
               onChange={(date) => setEndDate(date)}
-              minDate={startDate}
+              minDate={startDate} // Check-out cannot be before check-in
               className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-2.5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
             />
           </div>
@@ -833,7 +736,7 @@ function ReservationForm() {
         </div>
       </div>
 
-      {/* Display Selected Rooms - UPDATED SECTION */}
+      {/* Display Selected Rooms */}
       {roomSelections.length > 0 && (
         <div className="rounded-sm border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark p-4">
           <h3 className="text-lg font-semibold mb-3">Selected Rooms:</h3>
@@ -844,15 +747,14 @@ function ReservationForm() {
                   <th className="py-2 px-1 text-sm font-medium text-black dark:text-white xl:pl-4">
                     Room No.
                   </th>
-                  {/* The 'Category' column header has been removed */}
+                  <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
+                    Category
+                  </th>
                   <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
                     Rack Rate
                   </th>
                   <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
                     Offer Rate
-                  </th>
-                  <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
-                    Checked Out Date
                   </th>
                   <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
                     Days
@@ -876,46 +778,29 @@ function ReservationForm() {
                         {roomSel.roomName}
                       </p>
                     </td>
-                    {/* The 'Category' data cell has been removed */}
                     <td className="py-2 px-1">
                       <p className="text-black dark:text-white text-sm">
-                        {Number(roomSel.rackRate).toFixed(2)}
-                      </p>
-                    </td>
-                    <td className="py-2 px-1">
-                      <input
-                        type="number"
-                        min="0"
-                        value={roomSel.discountRate}
-                        onChange={(e) =>
-                          handleRoomOfferRateChange(
-                            roomSel.roomId,
-                            e.target.value
-                          )
-                        }
-                        className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-1 px-1.5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary text-sm"
-                      />
-                    </td>
-                    <td className="py-2 px-1">
-                      <DatePicker
-                        selected={roomSel.checkOutDate}
-                        onChange={(date) =>
-                          handleRoomCheckOutDateChange(roomSel.roomId, date)
-                        }
-                        minDate={startDate}
-                        className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-1 px-1.5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary text-sm"
-                      />
-                    </td>
-                    <td className="py-2 px-1">
-                      <p className="text-black dark:text-white text-sm">
-                        {roomSel.dayStay}
+                        {roomSel.category}
                       </p>
                     </td>
                     <td className="py-2 px-1">
                       <p className="text-black dark:text-white text-sm">
-                        {(
-                          Number(roomSel.discountRate) * roomSel.dayStay
-                        ).toFixed(2)}
+                        ${Number(roomSel.rackRate).toFixed(2)}
+                      </p>
+                    </td>
+                    <td className="py-2 px-1">
+                      <p className="text-black dark:text-white text-sm">
+                        ${Number(roomSel.discountRate).toFixed(2)}
+                      </p>
+                    </td>
+                    <td className="py-2 px-1">
+                      <p className="text-black dark:text-white text-sm">
+                        {dayStay}
+                      </p>
+                    </td>
+                    <td className="py-2 px-1">
+                      <p className="text-black dark:text-white text-sm">
+                        ${(Number(roomSel.discountRate) * dayStay).toFixed(2)}
                       </p>
                     </td>
                     <td className="py-2 px-1">
@@ -941,7 +826,7 @@ function ReservationForm() {
           {
             label: "Total Room Charges",
             value: roomSelections.reduce(
-              (sum, r) => sum + Number(r.discountRate) * r.dayStay,
+              (sum, r) => sum + Number(r.discountRate) * dayStay,
               0
             ),
             readOnly: true,
@@ -959,7 +844,7 @@ function ReservationForm() {
             <div className="flex flex-col gap-2.5 p-2.5">
               <p>{field.label}</p>
               <input
-                value={Number(field.value).toFixed(2)}
+                value={Number(field.value).toFixed(2)} // Format to 2 decimal places
                 readOnly={field.readOnly}
                 className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-3 px-2.5 text-black outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-whiter dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary"
               />
@@ -974,6 +859,7 @@ function ReservationForm() {
               placeholder="Select Method"
               className="react-select-container"
               classNamePrefix="react-select"
+              // You might want to add state and onChange for this Select
             />
           </div>
         </div>
@@ -1111,7 +997,7 @@ function ReservationForm() {
           <div className="flex flex-col gap-2.5 p-2.5">
             <p>Due</p>
             <input
-              value={Number(due).toFixed(2)}
+              value={Number(due).toFixed(2)} // Format to 2 decimal places
               readOnly
               type="number"
               placeholder="Due"
@@ -1123,7 +1009,7 @@ function ReservationForm() {
           <div className="flex flex-col gap-2.5 p-2.5">
             <p>Balance</p>
             <input
-              value={Number(finalAmount).toFixed(2)}
+              value={Number(finalAmount).toFixed(2)} // Format to 2 decimal places
               readOnly
               type="number"
               placeholder="Balance"
@@ -1200,6 +1086,7 @@ function ReservationForm() {
               ? guests.find((g) => g._id === selectedGuest.value)
               : reservation?.residentId
           }
+          // Passing roomDetails as an array, HotelInvoice must be updated to handle this
           roomDetails={roomSelections}
           dayStay={dayStay}
           startDate={startDate}
@@ -1209,8 +1096,8 @@ function ReservationForm() {
           newPaid={newPaid}
           finalAmount={finalAmount}
           paidInfo={[
-            ...(reservation?.paidInfo || []),
-            ...(Number(newPaid) > 0
+            ...(reservation?.paidInfo || []), // Existing payments in edit mode
+            ...(Number(newPaid) > 0 // Only add new paid info if newPaid > 0
               ? [
                   {
                     paid: Number(newPaid),
@@ -1228,7 +1115,8 @@ function ReservationForm() {
           totalAmount={totalAmount}
           status={selectedStatus?.label || "Will Check"}
           remark={formData.remark}
-          reservation={isEditMode ? reservation : null}
+          reservation={isEditMode ? reservation : null} // Pass the full reservation object in edit mode
+          // Removed individual room props like rackRate, discountRate as they are now in roomDetails
         />
       </div>
     </div>
