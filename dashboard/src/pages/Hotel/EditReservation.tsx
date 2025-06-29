@@ -121,8 +121,8 @@ function ReservationForm() {
   const [totalAmount, setTotalAmount] = useState(0);
   const [finalAmount, setFinalAmount] = useState(0);
   const [dayStay, setDayStay] = useState(1); // Global dayStay for primary reservation dates
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(getNextDate(new Date(), 1));
+  const [startDate, setStartDate] = useState();
+  const [endDate, setEndDate] = useState();
   const [updatedPaidInfo, setUpdatedPaidInfo] = useState([]); // This remains the 'global' endDate for primary reservation dates
   // Uses getNextDate here
 
@@ -446,9 +446,10 @@ function ReservationForm() {
             discountRate: detail.discountRate || 0,
             category: detail.roomId?.categoryId?.name || "N/A", // Still storing this data, but it won't be rendered in the table
             checkOutDate:
-              detail.checkOutDate || getNextDate(resStartDate || new Date(), 1), // Use parsed reservation endDate, or fallback
+              detail?.checkOutDate ||
+              getNextDate(resStartDate || new Date(), 1), // Use parsed reservation endDate, or fallback
             dayStay:
-              detail.dayStay ||
+              detail?.dayStay ||
               calculateDayGap(
                 resStartDate || new Date(),
                 resEndDate || getNextDate(resStartDate || new Date(), 1)
