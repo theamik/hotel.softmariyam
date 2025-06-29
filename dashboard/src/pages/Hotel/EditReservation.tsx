@@ -413,12 +413,12 @@ function ReservationForm() {
       const resStartDate = safeDate(reservation.checkInDate);
       const resEndDate = safeDate(reservation.checkOutDate);
 
-      setStartDate(resStartDate || new Date());
-      setEndDate(resEndDate || getNextDate(resStartDate || new Date(), 1));
+      setStartDate(resStartDate);
+      setEndDate(resEndDate ));
       setDayStay(
         calculateDayGap(
-          resStartDate || new Date(),
-          resEndDate || getNextDate(resStartDate || new Date(), 1)
+          resStartDate ,
+          resEndDate )
         )
       );
 
@@ -684,8 +684,8 @@ function ReservationForm() {
       setTotalAmount(0);
       setFinalAmount(0);
       setDayStay(1);
-      setStartDate(new Date());
-      setEndDate(getNextDate(new Date(), 1));
+      setStartDate());
+      setEndDate();
       setRoomSelections([]);
       setFormData("");
       navigate("/hotel/invoice");
@@ -902,7 +902,6 @@ function ReservationForm() {
                         onChange={(date) =>
                           handleRoomCheckOutDateChange(roomSel.roomId, date)
                         }
-                        minDate={startDate}
                         className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-1 px-1.5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary text-sm"
                       />
                     </td>
