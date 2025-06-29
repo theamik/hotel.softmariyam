@@ -410,8 +410,8 @@ function ReservationForm() {
   // Effect to populate form data when a reservation is fetched (edit mode)
   useEffect(() => {
     if (reservation && isEditMode) {
-      const resStartDate = safeDate(reservation.startDate);
-      const resEndDate = safeDate(reservation.endDate);
+      const resStartDate = safeDate(reservation.checkInDate);
+      const resEndDate = safeDate(reservation.checkOutDate);
 
       setStartDate(resStartDate || new Date());
       setEndDate(resEndDate || getNextDate(resStartDate || new Date(), 1));
