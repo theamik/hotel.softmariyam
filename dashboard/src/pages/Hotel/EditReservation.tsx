@@ -414,13 +414,8 @@ function ReservationForm() {
       const resEndDate = safeDate(reservation.checkOutDate);
 
       setStartDate(resStartDate);
-      setEndDate(resEndDate ));
-      setDayStay(
-        calculateDayGap(
-          resStartDate ,
-          resEndDate )
-        )
-      );
+      setEndDate(resEndDate);
+      setDayStay(calculateDayGap(resStartDate, resEndDate));
 
       setDiscount(reservation.discount || 0);
 
@@ -684,10 +679,10 @@ function ReservationForm() {
       setTotalAmount(0);
       setFinalAmount(0);
       setDayStay(1);
-      setStartDate());
+      setStartDate();
       setEndDate();
       setRoomSelections([]);
-      setFormData("");
+      setFormData();
       navigate("/hotel/invoice");
     }
   }, [successMessage, errorMessage, dispatch]);
