@@ -45,7 +45,7 @@ const StayView = () => {
   const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case "will_check":
-        return "bg-blue-500";
+        return "bg-red-200";
       case "checked_in":
         return "bg-green-500";
       case "checked_out":
@@ -57,7 +57,7 @@ const StayView = () => {
       case "complimentary":
         return "bg-yellow-400";
       case "cancel":
-        return "bg-blue-500";
+        return "bg-red-200";
       default:
         return "bg-gray-200";
     }
@@ -118,7 +118,7 @@ const StayView = () => {
         />
         <h2 className="text-xl font-semibold">Stay View</h2>
         <div className="flex gap-2 text-sm">
-          <LegendDot color="bg-blue-500" label="Assigned" />
+          <LegendDot color="bg-red-200" label="Assigned" />
           <LegendDot color="bg-green-500" label="Checked In" />
           <LegendDot color="bg-orange-400" label="Checked Out" />
         </div>
@@ -159,14 +159,14 @@ const StayView = () => {
                   {dates.map((date) => {
                     const cellKey = `${room._id}_${date.format("YYYY-MM-DD")}`;
 
-                    const checkInRes = reservations.find(
+                    const checkInRes = reservations?.find(
                       (r: any) =>
                         r.roomDetails?.some(
                           (rd: any) => rd.roomId?._id === room._id
                         ) && moment(r.checkInDate).isSame(date, "day")
                     );
 
-                    const checkOutRes = reservations.find(
+                    const checkOutRes = reservations?.find(
                       (r: any) =>
                         r.roomDetails?.some(
                           (rd: any) => rd.roomId?._id === room._id
@@ -419,7 +419,7 @@ const StayView = () => {
               {popupType === "checkout" && (
                 <button
                   onClick={() => newReservation(popupRoom!, popupDate!)}
-                  className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                  className="bg-red-200 text-black px-3 py-1 rounded hover:bg-green-600"
                 >
                   New Booking
                 </button>
@@ -427,7 +427,7 @@ const StayView = () => {
               {popupType === "available" && (
                 <button
                   onClick={() => newReservation(popupRoom!, popupDate!)}
-                  className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-green-600"
+                  className="bg-red-200 text-black px-3 py-1 rounded hover:bg-green-600"
                 >
                   New Booking
                 </button>

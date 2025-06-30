@@ -2678,7 +2678,7 @@ class orderController {
             _id: { $ne: existingReservation._id }, // Cannot transfer to self
           })
           .populate("roomDetails.roomId"); // Populate to get details for logging/response
-
+        console.log(targetReservation._id);
         if (!targetReservation) {
           // await session.abortTransaction();
           return responseReturn(res, 400, {
@@ -2692,14 +2692,16 @@ class orderController {
           `Performing bill transfer from Reservation ${existingReservation.reservationNo} to ${targetReservation.reservationNo}`
         );
 
+        console.log("first");
         // a. Transfer room details
         const roomsToTransfer = existingReservation.roomDetails.map(
           (detail) => ({
             roomId: detail.roomId._id, // Ensure it's the ID
-            rackRate: detail.rackRate,
-            discountRate: detail.discountRate,
+            rackRate: Number(detail.rackRate),
+            discountRate: Number(detail.discountRate),
             category: detail.roomId.categoryId?.name || detail.category, // Use populated name or original category
-            dayStay: detail.dayStay,
+            dayStay: Number(detail.dayStay),
+            checkOutDate: moment(detail.checkOutDate).format("YYYY-MM-DD"),
           })
         );
         targetReservation.roomDetails.push(...roomsToTransfer);
@@ -3174,7 +3176,6 @@ class orderController {
           checkOutDate: { $gte: finalStartDate }, // Reservation ends after or on the start of the range
         })
         .countDocuments();
-      console.log(totalReservations);
       const validReservations = reservations.filter((res) =>
         res.roomDetails?.some((detail) => detail.roomId !== null)
       );
