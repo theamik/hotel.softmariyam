@@ -76,12 +76,16 @@ const reservationModel = new Schema(
         otherAmount: { type: Number },
       },
     ],
-    restaurants: [
-      {
-        restaurant: { type: String },
-        restaurantAmount: { type: Number },
-      },
-    ],
+    restaurants: {
+      type: [
+        {
+          _id: false,
+          restaurant: { type: String },
+          restaurantAmount: { type: Number },
+        },
+      ],
+      default: [], // <--- Add this default if not already present
+    },
 
     totalAmount: {
       type: Number,
@@ -121,7 +125,7 @@ const reservationModel = new Schema(
     },
     source: {
       type: String,
-      required: true,
+      default: "walking",
     },
     status: {
       type: String,

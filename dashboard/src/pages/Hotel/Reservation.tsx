@@ -136,9 +136,9 @@ function ReservationForm() {
     dispatch(
       guest_add({
         name: formData.name,
-        address: formData.address,
-        mobile: formData.mobile,
-        description: formData.description,
+        address: formData.address || "N/A",
+        mobile: formData.mobile || "N/A",
+        description: formData.description || "N/A",
       })
     );
     // Fetch guests again after a short delay to get the newly added guest
@@ -233,101 +233,161 @@ function ReservationForm() {
   const reservationHandler = async (e) => {
     e.preventDefault();
 
-    if (!selectedGuest?.value) {
-      toast.error("Please select a guest");
-      return;
-    }
-
-    if (roomSelections.length === 0) {
-      toast.error("Please add at least one room to the reservation");
-      return;
-    }
-
-    if (!formData.source) {
-      toast.error("Please provide a source");
-      return;
-    }
-
-    // Determine final status
-    const newStatus = selectedStatus?.value;
-    const currentStatus = reservation?.status; // Only defined in edit mode
-    let finalStatusToSend = newStatus;
-
-    if (isEditMode) {
-      // Status transition validation for edit mode
-      if (currentStatus === "checked_in" && newStatus === "will_check") {
-        toast.error("Cannot change status from 'Checked In' to 'Will Check'.");
-        return;
-      }
-      if (
-        (currentStatus === "cancel" || currentStatus === "checked_out") &&
-        (newStatus === "checked_in" || newStatus === "will_check")
-      ) {
-        toast.error(
-          `Cannot change status from '${currentStatus}' to '${newStatus}'. Reservation is already finalized.`
-        );
-        return;
-      }
-    } else {
-      // Validation for new reservation
-      const invalidStatusesForNewReservation = ["cancel", "checked_out"];
-      if (invalidStatusesForNewReservation.includes(newStatus)) {
-        toast.error(
-          "New reservations cannot be created with 'Cancel' or 'Checked Out' status."
-        );
-        return;
-      }
-      // Default for new reservation if not explicitly checked_in or will_check
-      if (newStatus !== "checked_in" && newStatus !== "will_check") {
-        finalStatusToSend = "will_check";
-      }
-    }
-
-    // Prepare roomDetails array for the payload
-    const roomDetailsPayload = roomSelections.map((roomSel) => ({
-      roomId: roomSel.roomId,
-      rackRate: Number(roomSel.rackRate),
-      discountRate: Number(roomSel.discountRate),
-      category: roomSel.category,
-      dayStay: roomSel.dayStay,
-      checkOutDate: moment(roomSel.checkOutDate).format("YYYY-MM-DD"), // Use the individual room's dayStay
-    }));
-
-    const payload = {
-      startDate: startDate, // Global start date for the reservation
-      endDate: endDate, // Global end date for the reservation (consider if this should be max of room checkout dates)
-      roomDetails: roomDetailsPayload,
-      totalGuest: Number(formData.totalGuest),
-      guestId: selectedGuest.value,
-      totalAmount: Number(totalAmount),
-      source: formData.source,
-      others: [
-        {
-          other: formData.other,
-          otherAmount: Number(formData.otherAmount),
-        },
-      ],
-      restaurants: [
-        {
-          restaurant: formData.restaurant,
-          restaurantAmount: Number(formData.restaurantAmount),
-        },
-      ],
-      due: Number(due),
-      discount: Number(discount),
-      paidInfo: updatedPaidInfo,
-      finalAmount: Number(finalAmount),
-      status: finalStatusToSend,
-      remark: formData.remark,
-      billTransfer: selectedBookedRoom?.value || null, // Ensure null if not selected
-    };
-
-    if (isEditMode) {
+    if (formData.name) {
       dispatch(
-        update_reservation({ ...payload, reservationId: paramReservationId })
+        guest_add({
+          name: formData.name,
+          address: formData.address || "N/A",
+          mobile: formData.mobile || "N/A",
+          description: formData.description || "N/A",
+        })
       );
+      // Fetch guests again after a short delay to get the newly added guest
+      setTimeout(() => {
+        dispatch(guests_get());
+      }, 1000);
+      setTimeout(() => {
+        if (roomSelections.length === 0) {
+          toast.error("Please add at least one room to the reservation");
+          return;
+        }
+
+        // Determine final status
+        const newStatus = selectedStatus?.value; // Only defined in edit mode
+        let finalStatusToSend = newStatus;
+
+        {
+          // Validation for new reservation
+          const invalidStatusesForNewReservation = ["cancel", "checked_out"];
+          if (invalidStatusesForNewReservation.includes(newStatus)) {
+            toast.error(
+              "New reservations cannot be created with 'Cancel' or 'Checked Out' status."
+            );
+            return;
+          }
+          // Default for new reservation if not explicitly checked_in or will_check
+          if (newStatus !== "checked_in" && newStatus !== "will_check") {
+            finalStatusToSend = "will_check";
+          }
+        }
+
+        // Prepare roomDetails array for the payload
+        const roomDetailsPayload = roomSelections.map((roomSel) => ({
+          roomId: roomSel.roomId,
+          rackRate: Number(roomSel.rackRate),
+          discountRate: Number(roomSel.discountRate),
+          category: roomSel.category,
+          dayStay: roomSel.dayStay,
+          checkOutDate: moment(roomSel.checkOutDate).format("YYYY-MM-DD"), // Use the individual room's dayStay
+        }));
+
+        const payload = {
+          startDate: startDate, // Global start date for the reservation
+          endDate: endDate, // Global end date for the reservation (consider if this should be max of room checkout dates)
+          roomDetails: roomDetailsPayload,
+          totalGuest: Number(formData.totalGuest),
+          guestId: guest._id,
+          totalAmount: Number(totalAmount),
+          source: formData.source,
+          others: [
+            {
+              other: formData.other,
+              otherAmount: Number(formData.otherAmount),
+            },
+          ],
+          restaurants: [
+            {
+              restaurant: formData.restaurant,
+              restaurantAmount: Number(formData.restaurantAmount),
+            },
+          ],
+          due: Number(due),
+          discount: Number(discount),
+          paidInfo: updatedPaidInfo,
+          finalAmount: Number(finalAmount),
+          status: finalStatusToSend,
+          remark: formData.remark,
+          billTransfer: selectedBookedRoom?.value || null, // Ensure null if not selected
+        };
+        {
+          dispatch(new_reservation(payload));
+        }
+      }, 1000);
     } else {
-      dispatch(new_reservation(payload));
+      if (!selectedGuest?.value) {
+        toast.error("Please select a guest");
+        return;
+      }
+
+      if (roomSelections.length === 0) {
+        toast.error("Please add at least one room to the reservation");
+        return;
+      }
+
+      if (!formData.source) {
+        toast.error("Please provide a source");
+        return;
+      }
+
+      // Determine final status
+      const newStatus = selectedStatus?.value; // Only defined in edit mode
+      let finalStatusToSend = newStatus;
+      {
+        // Validation for new reservation
+        const invalidStatusesForNewReservation = ["cancel", "checked_out"];
+        if (invalidStatusesForNewReservation.includes(newStatus)) {
+          toast.error(
+            "New reservations cannot be created with 'Cancel' or 'Checked Out' status."
+          );
+          return;
+        }
+        // Default for new reservation if not explicitly checked_in or will_check
+        if (newStatus !== "checked_in" && newStatus !== "will_check") {
+          finalStatusToSend = "will_check";
+        }
+      }
+
+      // Prepare roomDetails array for the payload
+      const roomDetailsPayload = roomSelections.map((roomSel) => ({
+        roomId: roomSel.roomId,
+        rackRate: Number(roomSel.rackRate),
+        discountRate: Number(roomSel.discountRate),
+        category: roomSel.category,
+        dayStay: roomSel.dayStay,
+        checkOutDate: moment(roomSel.checkOutDate).format("YYYY-MM-DD"), // Use the individual room's dayStay
+      }));
+
+      const payload = {
+        startDate: startDate, // Global start date for the reservation
+        endDate: endDate, // Global end date for the reservation (consider if this should be max of room checkout dates)
+        roomDetails: roomDetailsPayload,
+        totalGuest: Number(formData.totalGuest),
+        guestId: selectedGuest.value,
+        totalAmount: Number(totalAmount),
+        source: formData.source,
+        others: [
+          {
+            other: formData.other,
+            otherAmount: Number(formData.otherAmount),
+          },
+        ],
+        restaurants: [
+          {
+            restaurant: formData.restaurant,
+            restaurantAmount: Number(formData.restaurantAmount),
+          },
+        ],
+        due: Number(due),
+        discount: Number(discount),
+        paidInfo: updatedPaidInfo,
+        finalAmount: Number(finalAmount),
+        status: finalStatusToSend,
+        remark: formData.remark,
+        billTransfer: selectedBookedRoom?.value || null, // Ensure null if not selected
+      };
+      {
+        dispatch(new_reservation(payload));
+      }
     }
   };
 

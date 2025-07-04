@@ -7,7 +7,7 @@ import {
   update_reservation_status,
   cancel_reservations_get, // Will be updated to accept searchQuery
   will_check_reservations_get, // Will be updated to accept searchQuery
-  check_in_reservations_get, // Will be updated to accept searchQuery
+  checked_in_reservations_get, // Will be updated to accept searchQuery
   check_out_reservations_get, // Will be updated to accept searchQuery
 } from "../../store/Actions/foodAction";
 import { messageClear } from "../../store/Reducers/foodReducer";
@@ -87,7 +87,7 @@ const TableOne = () => {
   const itemsPerPage = 10; // Fixed number of reservations per page
 
   // --- Filter States ---
-  const [activeFilter, setActiveFilter] = useState("all"); // 'all', 'will_check', 'check_in', 'checked_out', 'cancel'
+  const [activeFilter, setActiveFilter] = useState("all"); // 'all', 'will_check', 'checked_in', 'checked_out', 'cancel'
   const [searchQuery, setSearchQuery] = useState(""); // State for search query
 
   // State to manage the visibility of the status dropdown for each reservation
@@ -104,7 +104,7 @@ const TableOne = () => {
       color: "#00BFFF",
     }, // Blue
     {
-      value: "check_in",
+      value: "checked_in",
       label: "Check In",
       bgColor: "rgba(0, 128, 0, 0.2)",
       color: "green",
@@ -144,7 +144,7 @@ const TableOne = () => {
       hoverBg: "hover:bg-blue-200",
       hoverText: "hover:text-blue-900",
     },
-    check_in: {
+    checked_in: {
       bgColor: "bg-green-100",
       textColor: "text-green-800",
       hoverBg: "hover:bg-green-200",
@@ -177,8 +177,8 @@ const TableOne = () => {
         case "will_check":
           dispatch(will_check_reservations_get(payload));
           break;
-        case "check_in":
-          dispatch(check_in_reservations_get(payload));
+        case "checked_in":
+          dispatch(checked_in_reservations_get(payload));
           break;
         case "checked_out":
           dispatch(check_out_reservations_get(payload));
@@ -253,8 +253,8 @@ const TableOne = () => {
         case "will_check":
           dispatch(will_check_reservations_get(payload));
           break;
-        case "check_in":
-          dispatch(check_in_reservations_get(payload));
+        case "checked_in":
+          dispatch(checked_in_reservations_get(payload));
           break;
         case "checked_out":
           dispatch(check_out_reservations_get(payload));
@@ -358,14 +358,14 @@ const TableOne = () => {
                   </button>
 
                   {/* Check In Button */}
-                  <button onClick={() => handleFilterClick("check_in")}>
+                  <button onClick={() => handleFilterClick("checked_in")}>
                     <li
                       role="tab"
                       className={`relative flex items-center justify-center w-full h-full px-4 py-2 font-sans text-base antialiased font-normal leading-relaxed text-center cursor-pointer select-none transition-colors duration-200 rounded-md ml-1
-                        ${filterButtonStyles["check_in"].bgColor} ${filterButtonStyles["check_in"].textColor} ${filterButtonStyles["check_in"].hoverBg} ${filterButtonStyles["check_in"].hoverText}
-                        ${activeFilter === "check_in" ? "bg-white shadow-sm dark:bg-neutral-800 text-green-800 dark:text-green-200" : ""}
+                        ${filterButtonStyles["checked_in"].bgColor} ${filterButtonStyles["checked_in"].textColor} ${filterButtonStyles["checked_in"].hoverBg} ${filterButtonStyles["checked_in"].hoverText}
+                        ${activeFilter === "checked_in" ? "bg-white shadow-sm dark:bg-neutral-800 text-green-800 dark:text-green-200" : ""}
                       `}
-                      data-value="check_in"
+                      data-value="checked_in"
                     >
                       <div className="z-20 text-inherit">
                         &nbsp;&nbsp;Checked In&nbsp;&nbsp;

@@ -7,7 +7,7 @@ import {
   update_reservation_status,
   cancel_reservations_get, // Will be updated to accept searchQuery
   will_check_reservations_get, // Will be updated to accept searchQuery
-  check_in_reservations_get, // Will be updated to accept searchQuery
+  checked_in_reservations_get, // Will be updated to accept searchQuery
   check_out_reservations_get, // Will be updated to accept searchQuery
 } from "../../store/Actions/foodAction";
 import { messageClear } from "../../store/Reducers/foodReducer";
@@ -178,7 +178,7 @@ const TableTwo = () => {
           dispatch(will_check_reservations_get(payload));
           break;
         case "check_in":
-          dispatch(check_in_reservations_get(payload));
+          dispatch(checked_in_reservations_get(payload));
           break;
         case "checked_out":
           dispatch(check_out_reservations_get(payload));
@@ -254,7 +254,7 @@ const TableTwo = () => {
           dispatch(will_check_reservations_get(payload));
           break;
         case "check_in":
-          dispatch(check_in_reservations_get(payload));
+          dispatch(checked_in_reservations_get(payload));
           break;
         case "checked_out":
           dispatch(check_out_reservations_get(payload));

@@ -562,15 +562,15 @@ export const will_check_reservations_get = createAsyncThunk(
   }
 );
 
-export const check_in_reservations_get = createAsyncThunk(
-  "hotel/check-in-reservations-get",
+export const checked_in_reservations_get = createAsyncThunk(
+  "hotel/checked-in-reservations-get",
   async (
     { page, perPage, searchQuery },
     { rejectWithValue, fulfillWithValue }
   ) => {
     try {
       const { data } = await api.get(
-        `/order/reservations-get?status=check_in&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
+        `/order/reservations-get?status=checked_in&page=${page}&perPage=${perPage}&searchQuery=${searchQuery}`,
         {
           withCredentials: true,
         }

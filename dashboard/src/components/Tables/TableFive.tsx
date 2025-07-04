@@ -271,6 +271,7 @@ const TableFive = () => {
     if (successMessage) {
       toast.success(successMessage);
       dispatch(messageClear());
+      dispatch(get_orders());
       // No need to dispatch get_orders() here as it's already handled in the confirmCancelOrder's onOk callback
       // and in the main useEffect for initial load and filter/search changes.
     }

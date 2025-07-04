@@ -427,8 +427,6 @@ function ReservationForm() {
         source: reservation.source || "",
         other: reservation.others?.[0]?.other || "",
         otherAmount: reservation.others?.[0]?.otherAmount || 0,
-        restaurant: reservation.restaurants?.[0]?.restaurant || "",
-        restaurantAmount: reservation.restaurants?.[0]?.restaurantAmount || 0,
         remark: reservation.remark || "",
         totalGuest: reservation.totalGuest || 1,
         paidDetails: "",
@@ -460,9 +458,9 @@ function ReservationForm() {
         setRoomSelections([]);
       }
 
-      setTotalAmount(reservation.totalAmount || 0);
-      setDue(reservation.due || 0);
-      setFinalAmount(reservation.finalAmount || 0);
+      setTotalAmount(reservation?.totalAmount || 0);
+      setDue(reservation?.due || 0);
+      setFinalAmount(reservation?.finalAmount || 0);
 
       if (reservation.residentId) {
         setSelectedGuest({
@@ -596,11 +594,21 @@ function ReservationForm() {
       (sum, room) => sum + Number(room.discountRate) * room.dayStay,
       0
     );
+    const totalRestaurantAmount =
+      reservation?.restaurants?.reduce(
+        (sum, payment) => sum + payment.restaurantAmount,
+        0
+      ) || 0;
     const additionalCharges =
       (Number(formData.otherAmount) || 0) +
-      (Number(formData.restaurantAmount) || 0);
+      (Number(totalRestaurantAmount) || 0);
     setTotalAmount(roomsTotal + additionalCharges);
-  }, [roomSelections, formData.otherAmount, formData.restaurantAmount]);
+  }, [
+    roomSelections,
+    reservation,
+    formData.otherAmount,
+    formData.restaurantAmount,
+  ]);
 
   // Calculate due and final amount
   useEffect(() => {

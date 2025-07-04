@@ -553,7 +553,7 @@ const Chart: React.FC<ChartProps> = ({
                           Purpose
                         </h5>
                         <p className="font-bold print:font-bold print:text-black">
-                          {i?.restaurant || "N/A"}
+                          Order No : {i?.restaurant || "N/A"}
                         </p>
                       </div>
                       <div className="col-span-full sm:col-span-1">

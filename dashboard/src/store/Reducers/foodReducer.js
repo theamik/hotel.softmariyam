@@ -31,12 +31,12 @@ import {
   get_reservations_by_date_status_stay_view,
   cancel_reservations_get,
   will_check_reservations_get,
-  check_in_reservations_get,
   check_out_reservations_get,
   available_guests_get,
   confirmed_guests_get,
   finished_guests_get,
   cancelled_guests_get,
+  checked_in_reservations_get,
 } from "../Actions/foodAction";
 
 const initialState = {
@@ -195,7 +195,7 @@ export const foodSlice = createSlice({
       })
       .addCase(guest_add.fulfilled, (state, action) => {
         state.loader = false;
-        state.successMessage = action.payload.message;
+        state.guest = action.payload.guest;
       })
       .addCase(guest_add.rejected, (state, action) => {
         state.loader = false;
@@ -330,7 +330,7 @@ export const foodSlice = createSlice({
         state.reservations = action.payload.reservations;
         state.totalReservations = action.payload.totalReservations;
       })
-      .addCase(check_in_reservations_get.fulfilled, (state, action) => {
+      .addCase(checked_in_reservations_get.fulfilled, (state, action) => {
         state.loader = false;
         state.successMessage = action.payload.message;
         state.reservations = action.payload.reservations;
