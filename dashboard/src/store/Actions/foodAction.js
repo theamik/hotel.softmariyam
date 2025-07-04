@@ -467,6 +467,10 @@ export const new_reservation = createAsyncThunk(
       status,
       remark,
       billTransfer,
+      name,
+      address,
+      mobile,
+      description,
     },
     { rejectWithValue, fulfillWithValue }
   ) => {
@@ -490,6 +494,10 @@ export const new_reservation = createAsyncThunk(
           status,
           remark,
           billTransfer,
+          name,
+          address,
+          mobile,
+          description,
         },
         {
           withCredentials: true,

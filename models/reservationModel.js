@@ -125,7 +125,7 @@ const reservationModel = new Schema(
     },
     source: {
       type: String,
-      default: "walking",
+      default: "Walking",
     },
     status: {
       type: String,

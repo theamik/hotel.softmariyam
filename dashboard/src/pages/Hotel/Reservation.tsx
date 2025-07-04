@@ -234,18 +234,6 @@ function ReservationForm() {
     e.preventDefault();
 
     if (formData.name) {
-      dispatch(
-        guest_add({
-          name: formData.name,
-          address: formData.address || "N/A",
-          mobile: formData.mobile || "N/A",
-          description: formData.description || "N/A",
-        })
-      );
-      // Fetch guests again after a short delay to get the newly added guest
-      setTimeout(() => {
-        dispatch(guests_get());
-      }, 1000);
       setTimeout(() => {
         if (roomSelections.length === 0) {
           toast.error("Please add at least one room to the reservation");
@@ -286,9 +274,13 @@ function ReservationForm() {
           endDate: endDate, // Global end date for the reservation (consider if this should be max of room checkout dates)
           roomDetails: roomDetailsPayload,
           totalGuest: Number(formData.totalGuest),
-          guestId: guest._id,
+          guestId: guest?._id,
           totalAmount: Number(totalAmount),
           source: formData.source,
+          name: formData.name,
+          address: formData.address || "N/A",
+          mobile: formData.mobile || "N/A",
+          description: formData.description || "N/A",
           others: [
             {
               other: formData.other,
@@ -312,7 +304,7 @@ function ReservationForm() {
         {
           dispatch(new_reservation(payload));
         }
-      }, 1000);
+      }, 500);
     } else {
       if (!selectedGuest?.value) {
         toast.error("Please select a guest");

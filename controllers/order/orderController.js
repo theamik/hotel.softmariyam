@@ -2259,7 +2259,11 @@ class orderController {
       finalAmount,
       status,
       remark,
-      billTransfer, // This should be the roomId (ObjectId) if selected
+      billTransfer,
+      name,
+      address,
+      mobile,
+      description, // This should be the roomId (ObjectId) if selected
     } = req.body;
     let companyId, generatedByName, branchId;
 
@@ -2442,10 +2446,19 @@ class orderController {
           currentDate: paidInfo[0]?.currentDate,
         });
       }
+      const guest = await guestModel.create({
+        name,
+        address,
+        mobile,
+        description,
+        date: tempDate,
+        companyId: companyId,
+      });
+
       const reservationData = {
         reservationNo: newReservationId,
         transactionId: mainTransaction._id,
-        residentId: guestId,
+        residentId: guest._id,
         generatedBy: generatedByName,
         roomDetails: validatedRoomDetails, // Use the validated roomDetails array
         // Use others and restaurants directly as they are now arrays from frontend
@@ -2460,7 +2473,7 @@ class orderController {
         bookedDate: tempDate,
         checkInDate: checkInDate,
         checkOutDate: checkOutDate,
-        source,
+        source: source ? source : "Walking",
         status,
         remark,
         billTransfer: transferRoomId, // Store the ObjectId
