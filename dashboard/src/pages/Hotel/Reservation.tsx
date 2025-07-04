@@ -809,12 +809,16 @@ function ReservationForm() {
               className="react-select-container"
               classNamePrefix="react-select"
             />
-            <button
-              className="inline-flex items-center justify-center rounded-full py-3 px-2.5 bg-blue-600 text-center font-medium text-white hover:bg-blue-700 mt-2"
-              onClick={handleAddRoom}
-            >
-              Add Room
-            </button>
+            {roomSelections.length === 0 ? (
+              <button
+                className="inline-flex items-center justify-center rounded-full py-3 px-2.5 bg-blue-600 text-center font-medium text-white hover:bg-blue-700 mt-2"
+                onClick={handleAddRoom}
+              >
+                Add Room
+              </button>
+            ) : (
+              ""
+            )}
           </div>
         </div>
 

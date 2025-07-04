@@ -52,6 +52,7 @@ import Reservation from "./pages/Hotel/Reservation";
 import HotelInvoiceReady from "./pages/Hotel/HotelInvoiceReady";
 import EditReservation from "./pages/Hotel/EditReservation";
 import StayView from "./pages/Hotel/StayView";
+import ReservationGroupForm from "./pages/Hotel/ReservationGroup";
 
 function App() {
   const [loading, setLoading] = useState(true);
@@ -136,6 +137,15 @@ function App() {
                 <>
                   <PageTitle title="New Reservation | Soft Mariyam" />
                   <Reservation />
+                </>
+              }
+            />
+            <Route
+              path="/hotel/group-reservation"
+              element={
+                <>
+                  <PageTitle title="Group Reservation | Soft Mariyam" />
+                  <ReservationGroupForm />
                 </>
               }
             />
