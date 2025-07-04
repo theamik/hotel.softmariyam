@@ -37,6 +37,7 @@ import {
   finished_guests_get,
   cancelled_guests_get,
   checked_in_reservations_get,
+  group_reservations_get,
 } from "../Actions/foodAction";
 
 const initialState = {
@@ -313,6 +314,12 @@ export const foodSlice = createSlice({
         state.errorMessage = action.payload.message;
       })
       .addCase(reservations_get.fulfilled, (state, action) => {
+        state.loader = false;
+        state.successMessage = action.payload.message;
+        state.reservations = action.payload.reservations;
+        state.totalReservations = action.payload.totalReservations;
+      })
+      .addCase(group_reservations_get.fulfilled, (state, action) => {
         state.loader = false;
         state.successMessage = action.payload.message;
         state.reservations = action.payload.reservations;

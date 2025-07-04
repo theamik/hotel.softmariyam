@@ -530,6 +530,26 @@ export const reservations_get = createAsyncThunk(
   }
 );
 
+export const group_reservations_get = createAsyncThunk(
+  "hotel/group-reservations-get",
+  async (
+    { page, perPage, searchQuery },
+    { rejectWithValue, fulfillWithValue }
+  ) => {
+    try {
+      const { data } = await api.get(
+        `/order/group-reservations-get?page=${page}&perPage=${perPage}&searchQuery=${searchQuery}&minRoomCount=1`,
+        {
+          withCredentials: true,
+        }
+      );
+      return fulfillWithValue(data);
+    } catch (error) {
+      return rejectWithValue(error.response.data);
+    }
+  }
+);
+
 export const cancel_reservations_get = createAsyncThunk(
   "hotel/cancel-reservations-get",
   async (

@@ -62,6 +62,12 @@ router.get(
 );
 
 router.get(
+  "/order/group-reservations-get",
+  authMiddleware,
+  orderController.group_reservations
+);
+
+router.get(
   "/order/get-a-reservation/:reservationId",
   authMiddleware,
   orderController.get_a_reservation

@@ -2657,6 +2657,120 @@ class orderController {
       });
     }
   };
+
+  group_reservations = async (req, res) => {
+    try {
+      const { id, role } = req;
+      const currentPage = Math.max(1, parseInt(req.query.page) || 1);
+      const itemsPerPage = Math.min(
+        100,
+        Math.max(1, parseInt(req.query.perPage) || 10)
+      );
+
+      // Get company ID based on role
+      let companyId;
+      if (role === "staff") {
+        const staff = await staffModel.findById(id).select("companyId");
+        if (!staff) {
+          return responseReturn(res, 404, { message: "Staff not found" });
+        }
+        companyId = staff.companyId;
+      } else {
+        const owner = await ownerModel.findById(id).select("companyId");
+        if (!owner) {
+          return responseReturn(res, 404, { message: "Owner not found" });
+        }
+        companyId = owner.companyId;
+      }
+
+      // Filter for group reservations: roomDetails length > 1
+      const query = {
+        companyId,
+        $expr: { $gt: [{ $size: "$roomDetails" }, 1] },
+      };
+
+      // Optional: Add status filter if you want
+      if (req.query.status && req.query.status !== "all") {
+        query.status = req.query.status;
+      }
+
+      // Optional: Add search query on guest if needed
+      const searchQuery =
+        typeof req.query.searchQuery === "string"
+          ? req.query.searchQuery.trim()
+          : "";
+
+      if (searchQuery) {
+        const matchingGuests = await guestModel
+          .find({
+            companyId,
+            $or: [
+              { name: { $regex: searchQuery, $options: "i" } },
+              { mobile: { $regex: searchQuery, $options: "i" } },
+            ],
+          })
+          .select("_id");
+
+        const searchConditions = [
+          { source: { $regex: searchQuery, $options: "i" } },
+          { remark: { $regex: searchQuery, $options: "i" } },
+        ];
+
+        if (matchingGuests.length > 0) {
+          searchConditions.push({
+            residentId: { $in: matchingGuests.map((g) => g._id) },
+          });
+        }
+
+        query.$or = searchConditions;
+      }
+
+      // Fetch in parallel
+      const [reservations, totalReservations] = await Promise.all([
+        reservationModel
+          .find(query)
+          .populate({
+            path: "residentId",
+            select: "name mobile address",
+          })
+          .populate({
+            path: "roomDetails.roomId",
+            select: "name category",
+          })
+          .sort({ createdAt: -1 })
+          .skip((currentPage - 1) * itemsPerPage)
+          .limit(itemsPerPage)
+          .lean(),
+
+        reservationModel.countDocuments(query),
+      ]);
+      const response = {
+        totalReservations,
+        currentPage,
+        totalPages: Math.ceil(totalReservations / itemsPerPage),
+        reservations: reservations.map((res) => ({
+          ...res,
+          guestName: res.residentId?.name || "Unknown Guest",
+          guestMobile: res.residentId?.mobile || "",
+          rooms:
+            res.roomDetails?.map((room) => ({
+              id: room.roomId?._id,
+              name: room.roomId?.name || "Unknown Room",
+              category: room.roomId?.category || "Unknown",
+            })) || [],
+        })),
+      };
+
+      return responseReturn(res, 200, response);
+    } catch (error) {
+      console.error("Group reservations error:", error);
+      return responseReturn(res, 500, {
+        message: "Internal server error",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
+      });
+    }
+  };
   get_a_reservation = async (req, res) => {
     const { reservationId } = req.params;
     try {
@@ -2682,7 +2796,12 @@ class orderController {
     const { status } = req.body;
     console.log(reservationId);
     try {
-      const validStatuses = ["will_check", "check_in", "checked_out", "cancel"];
+      const validStatuses = [
+        "will_check",
+        "checked_in",
+        "checked_out",
+        "cancel",
+      ];
       if (!validStatuses.includes(status)) {
         return responseReturn(res, 400, {
           message: "Invalid status provided.",
