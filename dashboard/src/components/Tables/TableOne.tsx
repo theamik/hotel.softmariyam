@@ -4,7 +4,11 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   get_a_reservation,
   reservations_get, // Will be updated to accept searchQuery
-  update_reservation_status, // Will be updated to accept searchQuery
+  update_reservation_status,
+  cancel_reservations_get, // Will be updated to accept searchQuery
+  will_check_reservations_get, // Will be updated to accept searchQuery
+  checked_in_reservations_get, // Will be updated to accept searchQuery
+  check_out_reservations_get, // Will be updated to accept searchQuery
 } from "../../store/Actions/foodAction";
 import { messageClear } from "../../store/Reducers/foodReducer";
 import toast from "react-hot-toast";

@@ -5,6 +5,10 @@ import {
   get_a_reservation,
   group_reservations_get, // Will be updated to accept searchQuery
   update_reservation_status,
+  cancel_reservations_get, // Will be updated to accept searchQuery
+  will_check_reservations_get, // Will be updated to accept searchQuery
+  checked_in_reservations_get, // Will be updated to accept searchQuery
+  check_out_reservations_get, // Will be updated to accept searchQuery
 } from "../../store/Actions/foodAction";
 import { messageClear } from "../../store/Reducers/foodReducer";
 import toast from "react-hot-toast";
@@ -598,149 +602,141 @@ const TableTwo = () => {
               {reservations &&
                 reservations?.map((i, j) => {
                   // Only render the row if roomDetails exists and has a length greater than 0
-                  if (i?.roomDetails && i?.roomDetails?.length > 0) {
-                    const currentStatusOption = statusOptions.find(
-                      (option) => option.value === i?.status
-                    );
-                    const statusBgColor =
-                      currentStatusOption?.bgColor ||
-                      "rgba(108, 117, 125, 0.2)"; // Default grey
-                    const statusTextColor =
-                      currentStatusOption?.color || "gray"; // Default grey
+                  const currentStatusOption = statusOptions.find(
+                    (option) => option.value === i?.status
+                  );
+                  const statusBgColor =
+                    currentStatusOption?.bgColor || "rgba(108, 117, 125, 0.2)"; // Default grey
+                  const statusTextColor = currentStatusOption?.color || "gray"; // Default grey
 
-                    return (
-                      <tr
-                        key={i?._id || j}
-                        className="hover:bg-gray-50 dark:hover:bg-neutral-700/50"
-                      >
-                        <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
-                          <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                            {moment(i?.bookedDate).format("YYYY-MM-DD")}
-                          </p>
-                        </td>
-                        <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
-                          <div className="flex items-center gap-3">
-                            <div className="flex flex-col">
-                              <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                                {i?.residentId?.name}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
-                          <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                            {moment(i?.checkInDate).format("YYYY-MM-DD")}
-                          </p>
-                        </td>
-                        <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
-                          <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                            {moment(i?.checkOutDate).format("YYYY-MM-DD")}
-                          </p>
-                        </td>
-                        <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                  return (
+                    <tr
+                      key={i?._id || j}
+                      className="hover:bg-gray-50 dark:hover:bg-neutral-700/50"
+                    >
+                      <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                        <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
+                          {moment(i?.bookedDate).format("YYYY-MM-DD")}
+                        </p>
+                      </td>
+                      <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                        <div className="flex items-center gap-3">
                           <div className="flex flex-col">
                             <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                              {i?.source}
+                              {i?.residentId?.name}
                             </p>
                           </div>
-                        </td>
-                        <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                        </div>
+                      </td>
+                      <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                        <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
+                          {moment(i?.checkInDate).format("YYYY-MM-DD")}
+                        </p>
+                      </td>
+                      <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                        <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
+                          {moment(i?.checkOutDate).format("YYYY-MM-DD")}
+                        </p>
+                      </td>
+                      <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                        <div className="flex flex-col">
                           <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
-                            Tk {Number(i?.totalAmount).toFixed(2)}
+                            {i?.source}
                           </p>
-                        </td>
-                        <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
-                          <div className="w-max relative">
-                            {/* Status Display and Clickable area */}
-                            <div
-                              className="relative grid items-center px-2 py-1 font-sans text-xs font-bold uppercase rounded-md select-none whitespace-nowrap cursor-pointer transition-all duration-200 hover:scale-105"
-                              style={{
-                                backgroundColor: statusBgColor,
-                                color: statusTextColor,
-                              }}
-                              onClick={() =>
-                                setOpenStatusDropdown(
-                                  openStatusDropdown === i?._id ? null : i?._id
-                                )
-                              }
-                            >
-                              <span className="">
-                                {currentStatusOption?.label || i?.status}
-                              </span>
-                            </div>
+                        </div>
+                      </td>
+                      <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                        <p className="block font-sans text-sm antialiased dark:text-white font-normal leading-normal text-blue-gray-900">
+                          Tk {Number(i?.totalAmount).toFixed(2)}
+                        </p>
+                      </td>
+                      <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                        <div className="w-max relative">
+                          {/* Status Display and Clickable area */}
+                          <div
+                            className="relative grid items-center px-2 py-1 font-sans text-xs font-bold uppercase rounded-md select-none whitespace-nowrap cursor-pointer transition-all duration-200 hover:scale-105"
+                            style={{
+                              backgroundColor: statusBgColor,
+                              color: statusTextColor,
+                            }}
+                            onClick={() =>
+                              setOpenStatusDropdown(
+                                openStatusDropdown === i?._id ? null : i?._id
+                              )
+                            }
+                          >
+                            <span className="">
+                              {currentStatusOption?.label || i?.status}
+                            </span>
+                          </div>
 
-                            {/* Status Dropdown */}
-                            {openStatusDropdown === i?._id && (
-                              <div className="absolute z-20 mt-1 w-full rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-neutral-700 dark:ring-neutral-600">
-                                <div className="py-1">
-                                  {statusOptions.map((option) => (
-                                    <div
-                                      key={option.value}
-                                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer dark:text-neutral-200 dark:hover:bg-neutral-600"
-                                      onClick={() =>
-                                        handleStatusChange(i?._id, option.value)
-                                      }
-                                    >
-                                      {option.label}
-                                    </div>
-                                  ))}
-                                </div>
+                          {/* Status Dropdown */}
+                          {openStatusDropdown === i?._id && (
+                            <div className="absolute z-20 mt-1 w-full rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none dark:bg-neutral-700 dark:ring-neutral-600">
+                              <div className="py-1">
+                                {statusOptions.map((option) => (
+                                  <div
+                                    key={option.value}
+                                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 cursor-pointer dark:text-neutral-200 dark:hover:bg-neutral-600"
+                                    onClick={() =>
+                                      handleStatusChange(i?._id, option.value)
+                                    }
+                                  >
+                                    {option.label}
+                                  </div>
+                                ))}
                               </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
-                          <div className="flex gap-2">
-                            {/* Edit Button */}
-                            <button
-                              className="relative h-10 w-10 select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 transition-all hover:bg-gray-900/10 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none dark:text-gray-200 dark:hover:bg-neutral-600/20 dark:active:bg-neutral-600/40"
-                              type="button"
-                              onClick={() =>
-                                editHandler(i?._id, i?.checkInDate)
-                              }
-                              title="Edit Reservation"
-                            >
-                              <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  viewBox="0 0 24 24"
-                                  fill="currentColor"
-                                  className="w-4 h-4"
-                                >
-                                  <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
-                                </svg>
-                              </span>
-                            </button>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 border-b border-blue-gray-50 dark:border-neutral-700">
+                        <div className="flex gap-2">
+                          {/* Edit Button */}
+                          <button
+                            className="relative h-10 w-10 select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 transition-all hover:bg-gray-900/10 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none dark:text-gray-200 dark:hover:bg-neutral-600/20 dark:active:bg-neutral-600/40"
+                            type="button"
+                            onClick={() => editHandler(i?._id, i?.checkInDate)}
+                            title="Edit Reservation"
+                          >
+                            <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                className="w-4 h-4"
+                              >
+                                <path d="M21.731 2.269a2.625 2.625 0 00-3.712 0l-1.157 1.157 3.712 3.712 1.157-1.157a2.625 2.625 0 000-3.712zM19.513 8.199l-3.712-3.712-12.15 12.15a5.25 5.25 0 00-1.32 2.214l-.8 2.685a.75.75 0 00.933.933l2.685-.8a5.25 5.25 0 002.214-1.32L19.513 8.2z" />
+                              </svg>
+                            </span>
+                          </button>
 
-                            {/* Print Button */}
-                            <button
-                              className="relative h-10 w-10 select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 transition-all hover:bg-gray-900/10 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none dark:text-gray-200 dark:hover:bg-neutral-600/20 dark:active:bg-neutral-600/40"
-                              type="button"
-                              onClick={() => invoiceHandler(i?._id)}
-                              title="Generate Invoice"
-                            >
-                              <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  fill="currentColor"
-                                  viewBox="0 0 24 24"
-                                  className="w-4 h-4"
-                                >
-                                  <path
-                                    fillRule="evenodd"
-                                    d="M6 2a1 1 0 00-1 1v4h14V3a1 1 0 00-1-1H6zM5 8a2 2 0 00-2 2v5a1 1 0 001 1h2v4a1 1 0 001 1h10a1 1 0 001-1v-4h2a1 1 0 001-1v-5a2 2 0 00-2-2H5zm4 9a1 1 0 100-2h6a1 1 0 100 2H9z"
-                                    clipRule="evenodd"
-                                  />
-                                </svg>
-                              </span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  } else {
-                    return null; // Don't render the row if roomDetails is empty or not present
-                  }
+                          {/* Print Button */}
+                          <button
+                            className="relative h-10 w-10 select-none rounded-lg text-center align-middle font-sans text-xs font-medium uppercase text-gray-900 transition-all hover:bg-gray-900/10 active:bg-gray-900/20 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none dark:text-gray-200 dark:hover:bg-neutral-600/20 dark:active:bg-neutral-600/40"
+                            type="button"
+                            onClick={() => invoiceHandler(i?._id)}
+                            title="Generate Invoice"
+                          >
+                            <span className="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                                className="w-4 h-4"
+                              >
+                                <path
+                                  fillRule="evenodd"
+                                  d="M6 2a1 1 0 00-1 1v4h14V3a1 1 0 00-1-1H6zM5 8a2 2 0 00-2 2v5a1 1 0 001 1h2v4a1 1 0 001 1h10a1 1 0 001-1v-4h2a1 1 0 001-1v-5a2 2 0 00-2-2H5zm4 9a1 1 0 100-2h6a1 1 0 100 2H9z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                            </span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
                 })}
             </tbody>
           </table>
