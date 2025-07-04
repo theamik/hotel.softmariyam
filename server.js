@@ -26,6 +26,7 @@ app.use(
 //     methods: ["GET", "POST", "PUT", "DELETE"],
 //   })
 // );
+
 app.use(express.json({ limit: "10mb" }));
 app.use(
   bodyParser.urlencoded({
