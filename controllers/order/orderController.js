@@ -2446,19 +2446,21 @@ class orderController {
           currentDate: paidInfo[0]?.currentDate,
         });
       }
-      const guest = await guestModel.create({
-        name,
-        address,
-        mobile,
-        description,
-        date: tempDate,
-        companyId: companyId,
-      });
+      if (name) {
+        var guest = await guestModel.create({
+          name,
+          address,
+          mobile,
+          description,
+          date: tempDate,
+          companyId: companyId,
+        });
+      }
 
       const reservationData = {
         reservationNo: newReservationId,
         transactionId: mainTransaction._id,
-        residentId: guest._id,
+        residentId: guestId ? guestId : guest._id,
         generatedBy: generatedByName,
         roomDetails: validatedRoomDetails, // Use the validated roomDetails array
         // Use others and restaurants directly as they are now arrays from frontend
