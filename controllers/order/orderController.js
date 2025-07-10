@@ -750,6 +750,80 @@ class orderController {
 
           accRecParty.balance = Number(accRecParty.balance) - amountToPay; // Income increases
           await accRecParty.save(); // { session }
+          const roomBill = await roomModel
+            .findById(existingOrder.partyId)
+            .session(session);
+
+          if (roomBill) {
+            // This block executes if partyId is a valid room ID
+            const startDate = moment().format("YYYY-MM-DD");
+            const selectedDate = new Date(startDate);
+            var inDate = moment(selectedDate).format("YYYY-MM-DD");
+
+            const nextDay = new Date(selectedDate);
+            nextDay.setDate(nextDay.getDate() + 1);
+            var outDate = moment(nextDay).format("YYYY-MM-DD");
+
+            const targetReservation = await reservationModel
+              .findOne({
+                "roomDetails.roomId": existingOrder?.partyId, // Check if the room exists in roomDetails
+                companyId: companyId,
+                status: { $nin: ["cancel", "checked_out"] }, // Target must be active
+                checkInDate: { $lte: outDate }, // Target starts on or before current reservation's new end date
+                checkOutDate: { $gte: inDate }, // Target ends after current reservation's new start date
+                // Only exclude if existingReservation is found and is different from the target
+              })
+              .populate("roomDetails.roomId")
+              .session(session);
+
+            console.log(
+              targetReservation
+                ? targetReservation._id
+                : "No target reservation found"
+            );
+            if (!targetReservation) {
+              await session.abortTransaction();
+              session.endSession();
+              return responseReturn(res, 400, {
+                message:
+                  "No active reservation found for the selected Bill Transfer Room on the overlapping dates.",
+              });
+            }
+
+            // --- Accumulate data from existingReservation to targetReservation ---
+            console.log(
+              `Performing bill transfer to Reservation ${targetReservation.reservationNo}`
+            );
+
+            // Ensure restaurants array exists on targetReservation
+            if (!targetReservation.restaurants) {
+              targetReservation.restaurants = []; // Initialize as an empty array if it's null/undefined
+            }
+
+            console.log("first"); // This line doesn't seem to have a functional purpose here.
+
+            // b. Accumulate financial amounts (totalAmount, discount, due, finalAmount)
+            targetReservation.totalAmount =
+              (Number(targetReservation.totalAmount) || 0) -
+              (Number(existingOrder.totalAmount) || 0);
+            targetReservation.discount =
+              (Number(targetReservation.discount) || 0) -
+              (Number(existingOrder.discount) || 0);
+            targetReservation.due =
+              (Number(targetReservation.due) || 0) -
+              (Number(existingOrder.totalAmount) || 0);
+            targetReservation.finalAmount =
+              (Number(targetReservation.finalAmount) || 0) -
+              (Number(existingOrder.finalAmount) || 0);
+
+            // This is line 459:
+            targetReservation.restaurants.pull({
+              restaurant: existingOrder.orderNo.toString(),
+              restaurantAmount: existingOrder.finalAmount,
+            });
+            // Save the updated target reservation
+            await targetReservation.save({ session });
+          }
         }
       } else if (newStatus === "cancelled") {
         const amountToPay = existingOrder.totalAmount; // The outstanding due amount

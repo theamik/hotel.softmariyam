@@ -73,7 +73,7 @@ const TableFive = () => {
   const [showModal, setShowModal] = useState(false);
   const dispatch = useDispatch();
   const componentRef = useRef<HTMLDivElement>(null);
-
+  console.log(order);
   // --- Pagination States ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Fixed number of orders per page
@@ -191,6 +191,12 @@ const TableFive = () => {
   const handlePrint = useReactToPrint({
     documentTitle: `Order-Invoice-${order?.orderNo || "Unknown"}`, // Dynamic title
     contentRef: componentRef,
+    if(contentRef) {
+      const printWindow = window.open("", "_blank");
+      printWindow.document.write(content.outerHTML);
+      printWindow.document.close();
+      printWindow.print();
+    },
   });
 
   const confirmCancelOrder = (orderId: string) => {
@@ -774,7 +780,7 @@ const TableFive = () => {
       {/* ============ Invoice Modal Start ============== */}
       {showModal && (
         <Modal
-          width={400}
+          width={350} // Reduce modal width for compactness
           title="Order Invoice"
           open={showModal}
           onCancel={cancelHandler}
@@ -788,7 +794,7 @@ const TableFive = () => {
                   <img
                     src={`${intLocal}${userInfo.companyId.image}`}
                     alt="Company Logo"
-                    className="w-20 h-20 rounded-full object-cover border mx-auto mb-2"
+                    className="w-16 h-16 rounded-full object-cover border mx-auto mb-2"
                     onError={(e) => {
                       e.currentTarget.src =
                         "https://placehold.co/80x80/cccccc/000000?text=Logo";
@@ -798,18 +804,24 @@ const TableFive = () => {
                 </div>
               )}
               <div className="info">
-                <h2 className="text-lg font-bold">
+                <h2 className="text-sm font-bold">
                   {userInfo?.companyId?.name || "Your Company Name"}
                 </h2>
-                <p>{userInfo?.companyId?.address || "Company Address"}</p>
-                <p>{userInfo?.companyId?.mobile || "Company Mobile"}</p>
-                <p>{userInfo?.companyId?.email || "Company Email"}</p>
+                <p className="text-xs">
+                  {userInfo?.companyId?.address || "Company Address"}
+                </p>
+                <p className="text-xs">
+                  {userInfo?.companyId?.mobile || "Company Mobile"}
+                </p>
+                <p className="text-xs">
+                  {userInfo?.companyId?.email || "Company Email"}
+                </p>
               </div>
             </div>
 
             {/* Invoice Mid */}
-            <div id="mid" className="mt-4">
-              <div className="info text-sm">
+            <div id="mid" className="mt-2">
+              <div className="info text-xs">
                 <p className="flex justify-between items-center mb-1">
                   <span>
                     Order No: <b>{order?.orderNo || "N/A"}</b>
@@ -818,17 +830,15 @@ const TableFive = () => {
                     <b>{moment(order?.date).format("YYYY-MM-DD")}</b>
                   </span>
                 </p>
-                <p className="flex justify-between mt-2 items-center mb-1">
+                <p className="flex justify-between text-xs items-center mb-1">
                   <span>
                     Order For: <b>{order?.party || "N/A"}</b>
                   </span>
-
                   <span>
                     <b>{moment(order?.date).format("HH:mm")}</b>
                   </span>
                 </p>
-                {/* Added Order Status */}
-                <p className="flex justify-between mt-2 items-center mb-1">
+                <p className="flex justify-between text-xs mt-1 items-center mb-1">
                   <span>
                     Bill By: <b>{order?.generatedBy || "N/A"}</b>
                   </span>
@@ -843,18 +853,27 @@ const TableFive = () => {
             </div>
 
             {/* Invoice Bot */}
-            <div id="bot" className="mt-4">
+            <div id="bot" className="mt-2">
               <div id="table">
-                <table className="w-full">
+                <table className="w-full text-xs">
                   <thead>
                     <tr className="tabletitle">
-                      <td className="item table-header text-left">
+                      <td
+                        className="item table-header text-left"
+                        style={{ padding: "5px", width: "80%" }}
+                      >
                         <p className="font-bold">Item</p>
                       </td>
-                      <td className="Hours table-header text-center">
+                      <td
+                        className="Hours table-header text-center"
+                        style={{ padding: "5px", width: "20%" }}
+                      >
                         <p className="font-bold">Qty</p>
                       </td>
-                      <td className="Rate table-header text-right">
+                      <td
+                        className="Rate table-header text-right"
+                        style={{ padding: "5px", width: "20%" }}
+                      >
                         <p className="font-bold">Amount</p>
                       </td>
                     </tr>
@@ -862,55 +881,108 @@ const TableFive = () => {
                   <tbody>
                     {order?.cartItems?.map((item) => (
                       <tr className="service" key={item._id}>
-                        <td className="tableitem text-left">
-                          <p className="itemtext">{item.name}</p>
-                        </td>
-                        <td className="tableitem text-center">
-                          <p className="itemtext">{item.quantity}</p>
-                        </td>
-                        <td className="tableitem text-right">
+                        <td
+                          className="tableitem text-left"
+                          style={{ padding: "3px" }}
+                        >
                           <p className="itemtext">
-                            Tk {(item.price * item.quantity).toFixed(2)}
+                            {item.name || "Item not available"}
+                          </p>
+                        </td>
+                        <td
+                          className="tableitem text-center"
+                          style={{ padding: "3px" }}
+                        >
+                          <p className="itemtext">{item.quantity || 0}</p>
+                        </td>
+                        <td
+                          className="tableitem text-right"
+                          style={{ padding: "3px" }}
+                        >
+                          <p className="itemtext">
+                            {(item.price * item.quantity || 0).toFixed(2)}
                           </p>
                         </td>
                       </tr>
                     ))}
-                    {order?.discount && order.discount > 0 ? (
+                    {order?.discount || order?.delivery || order?.service ? (
                       <tr className="tabletitle">
-                        <td className="Rate text-left" colSpan={2}>
+                        <td
+                          className="Rate text-left"
+                          colSpan={2}
+                          style={{ padding: "5px" }}
+                        >
+                          <p className="font-bold">Sub Total</p>
+                        </td>
+                        <td
+                          className="payment text-right"
+                          style={{ padding: "5px" }}
+                        >
+                          <p className="font-bold">
+                            {Number(order?.totalAmount).toFixed(2)}
+                          </p>
+                        </td>
+                      </tr>
+                    ) : (
+                      ""
+                    )}
+                    {order?.discount ? (
+                      <tr className="tabletitle">
+                        <td
+                          className="Rate text-left"
+                          colSpan={2}
+                          style={{ padding: "5px" }}
+                        >
                           <p className="font-bold">Discount</p>
                         </td>
-                        <td className="payment text-right">
+                        <td
+                          className="payment text-right"
+                          style={{ padding: "5px" }}
+                        >
                           <p className="font-bold">
-                            Tk {Number(order.discount).toFixed(2)}
+                            {Number(order.discount).toFixed(2)}
                           </p>
                         </td>
                       </tr>
                     ) : (
                       ""
                     )}
-                    {order?.service && order.service > 0 ? (
+                    {order?.service ? (
                       <tr className="tabletitle">
-                        <td className="Rate text-left" colSpan={2}>
+                        <td
+                          className="Rate text-left"
+                          colSpan={2}
+                          style={{ padding: "5px" }}
+                        >
                           <p className="font-bold">Service Fee</p>
                         </td>
-                        <td className="payment text-right">
+                        <td
+                          className="payment text-right"
+                          style={{ padding: "5px" }}
+                        >
                           <p className="font-bold">
-                            Tk {Number(order?.service).toFixed(2)}
+                            {Number(order?.service).toFixed(2)}
                           </p>
                         </td>
                       </tr>
                     ) : (
                       ""
                     )}
-                    {order?.delivery && order.delivery > 0 ? (
+                    {order?.delivery ? (
                       <tr className="tabletitle">
-                        <td className="Rate text-left" colSpan={2}>
+                        <td
+                          className="Rate text-left"
+                          colSpan={2}
+                          style={{ padding: "5px" }}
+                        >
                           <p className="font-bold">Delivery Fee</p>
                         </td>
-                        <td className="payment text-right">
+                        <td
+                          className="payment text-right"
+                          style={{ padding: "5px" }}
+                        >
                           <p className="font-bold">
-                            Tk {Number(order.delivery).toFixed(2)}
+                            {Number(order.delivery).toFixed(2)}
                           </p>
                         </td>
                       </tr>
@@ -918,42 +990,56 @@ const TableFive = () => {
                       ""
                     )}
                     <tr className="tabletitle total">
-                      <td className="Rate text-left" colSpan={2}>
-                        <p className="font-bold">Total</p>
+                      <td
+                        className="Rate text-left"
+                        colSpan={2}
+                        style={{ padding: "5px" }}
+                      >
+                        <p className="font-bold">Grand Total</p>
                       </td>
-                      <td className="payment text-right">
+                      <td
+                        className="payment text-right"
+                        style={{ padding: "5px" }}
+                      >
                         <p className="font-bold">
-                          Tk {Number(order?.finalAmount).toFixed(2)}
+                          {(order?.finalAmount || 0).toFixed(2)}
                         </p>
                       </td>
                     </tr>
                     <tr className="tabletitle total">
-                      <td className="Rate text-left" colSpan={2}>
+                      <td
+                        className="Rate text-left"
+                        colSpan={2}
+                        style={{ padding: "5px" }}
+                      >
                         <p className="font-bold">Order Status</p>
                       </td>
-                      <td className="payment text-right">
+                      <td
+                        className="payment text-right"
+                        style={{ padding: "5px" }}
+                      >
                         <p className="font-bold">{order?.status || "N/A"}</p>
                       </td>
                     </tr>
                   </tbody>
                 </table>
               </div>
-              {/* Removed the '000' div here */}
 
               <div
                 id="legalcopy"
-                className="mt-4 text-center text-xs text-gray-600"
+                className="mt-3 text-center text-xs text-gray-600"
               >
                 <p className="legal">
-                  <strong>Thank you for your order!</strong> Come again.
-                  <b> Developed by AleeZaInnovation </b>
+                  <strong>Thank you for your order!</strong> Come again. <br />
+                  <b>Developed by AleeZaInnovation</b>
                 </p>
               </div>
             </div>
           </div>
-          <div className="flex justify-end mt-3">
+
+          <div className="flex justify-end mt-2">
             <Button
-              className="px-5 py-[6px] rounded-sm hover:shadow-blue-500/20 hover:shadow-lg bg-blue-500 text-sm text-white uppercase"
+              className="px-4 py-2 rounded-sm bg-blue-500 text-white text-xs uppercase"
               onClick={handlePrint}
             >
               Print Invoice
@@ -961,6 +1047,7 @@ const TableFive = () => {
           </div>
         </Modal>
       )}
+
       {/* ============ Invoice Modal End ============== */}
     </div>
   );
