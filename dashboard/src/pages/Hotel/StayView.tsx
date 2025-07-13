@@ -1,5 +1,3 @@
-// StayView.tsx — Final Fix with Popup + Icons in Full-Day and Half-Day Blocks 💎
-
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -79,12 +77,14 @@ const StayView = () => {
         `/hotel/reservation/edit?reservationId=${reservationId}&&roomId=${roomId}&&checkInDate=${formattedDate}`
       );
     },
-    [dispatch, navigate]
+    [navigate]
   );
 
   const newReservation = (roomId: string, date: moment.Moment) => {
     navigate(
-      `/hotel/new-reservation?roomId=${roomId}&checkInDate=${date.format("YYYY-MM-DD")}`
+      `/hotel/new-reservation?roomId=${roomId}&checkInDate=${date.format(
+        "YYYY-MM-DD"
+      )}`
     );
   };
 
@@ -166,20 +166,21 @@ const StayView = () => {
                         ) && moment(r.checkInDate).isSame(date, "day")
                     );
 
-                    const checkOutRes = reservations?.find(
-                      (r: any) =>
-                        r.roomDetails?.some(
-                          (rd: any) => rd.roomId?._id === room._id
-                        ) && moment(r.checkOutDate).isSame(date, "day")
+                    const checkOutRes = reservations?.find((r: any) =>
+                      r.roomDetails?.some(
+                        (rd: any) =>
+                          rd.roomId?._id === room._id &&
+                          moment(rd.checkOutDate).isSame(date, "day")
+                      )
                     );
 
-                    const fullRes = reservations.find(
-                      (r: any) =>
-                        r.roomDetails?.some(
-                          (rd: any) => rd.roomId?._id === room._id
-                        ) &&
-                        moment(r.checkInDate).isBefore(date, "day") &&
-                        moment(r.checkOutDate).isAfter(date, "day")
+                    const fullRes = reservations.find((r: any) =>
+                      r.roomDetails?.some(
+                        (rd: any) =>
+                          rd.roomId?._id === room._id &&
+                          moment(r.checkInDate).isBefore(date, "day") &&
+                          moment(rd.checkOutDate).isAfter(date, "day")
+                      )
                     );
 
                     const sameResId =
@@ -221,7 +222,9 @@ const StayView = () => {
                       >
                         {checkOutRes && (!sameResId || !checkInRes) && (
                           <div
-                            className={`h-1/2 ${getStatusColor(checkOutRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-t-full`}
+                            className={`h-1/2 ${getStatusColor(
+                              checkOutRes.status
+                            )} px-2 text-white text-xs flex items-center justify-between rounded-t-full`}
                           >
                             <span>
                               {checkOutRes.residentId?.name.slice(0, 10)}
@@ -254,7 +257,9 @@ const StayView = () => {
                         )}
                         {checkInRes && (!sameResId || !checkOutRes) && (
                           <div
-                            className={`h-1/2 ${getStatusColor(checkInRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-b-full`}
+                            className={`h-1/2 ${getStatusColor(
+                              checkInRes.status
+                            )} px-2 text-white text-xs flex items-center justify-between rounded-b-full`}
                           >
                             <span>
                               {checkInRes.residentId?.name.slice(0, 10)}
@@ -288,7 +293,9 @@ const StayView = () => {
                         {checkInRes && checkOutRes && sameResId && (
                           <>
                             <div
-                              className={`h-1/2 ${getStatusColor(checkOutRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-t-full`}
+                              className={`h-1/2 ${getStatusColor(
+                                checkOutRes.status
+                              )} px-2 text-white text-xs flex items-center justify-between rounded-t-full`}
                             >
                               <span>
                                 {checkOutRes.residentId?.name.slice(0, 10)}
@@ -319,7 +326,9 @@ const StayView = () => {
                               </div>
                             </div>
                             <div
-                              className={`h-1/2 ${getStatusColor(checkInRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-b-full`}
+                              className={`h-1/2 ${getStatusColor(
+                                checkInRes.status
+                              )} px-2 text-white text-xs flex items-center justify-between rounded-b-full`}
                             >
                               <span>
                                 {checkInRes.residentId?.name.slice(0, 10)}
@@ -353,7 +362,9 @@ const StayView = () => {
                         )}
                         {fullRes && !checkInRes && !checkOutRes && (
                           <div
-                            className={`h-full ${getStatusColor(fullRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-full`}
+                            className={`h-full ${getStatusColor(
+                              fullRes.status
+                            )} px-2 text-white text-xs flex items-center justify-between rounded-full`}
                           >
                             <span>{fullRes.residentId?.name.slice(0, 10)}</span>
                             <div className="flex gap-1 ml-2">

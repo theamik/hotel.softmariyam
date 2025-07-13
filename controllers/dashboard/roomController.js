@@ -175,42 +175,71 @@ class roomController {
 
   get_available_rooms = async (req, res) => {
     const { id } = req;
-    const { companyId } = await ownerModel.findById(id);
-    const startDate = moment(req.query.startDate).format("YYYY-MM-DD");
 
-    const selectedDate = new Date(startDate);
-    var inDate = moment(selectedDate).format("YYYY-MM-DD");
-
-    const nextDay = new Date(selectedDate);
-    nextDay.setDate(nextDay.getDate() + 1);
-    var outDate = moment(nextDay).format("YYYY-MM-DD");
     try {
-      // 1. Get all rooms of the company
+      const { companyId } = await ownerModel.findById(id);
+      if (!companyId) {
+        return responseReturn(res, 400, { error: "Company ID not found" });
+      }
+
+      const startDate = moment(req.query.startDate);
+      if (!startDate.isValid()) {
+        return responseReturn(res, 400, { error: "Invalid start date" });
+      }
+
+      const inDate = startDate.format("YYYY-MM-DD");
+      const outDate = startDate.clone().add(1, "day").format("YYYY-MM-DD");
+
+      // Get all rooms
       const allRooms = await roomModel
         .find({ companyId })
         .populate("categoryId");
 
-      // 2. Find all reservations that overlap with the date
-      const reservations = await reservationModel.find({
-        status: { $ne: "cancel" },
-        checkInDate: { $lt: outDate },
-        checkOutDate: { $gt: inDate },
-        companyId: companyId,
-      });
-      // 3. Collect all reserved room IDs
-      const reservedRoomIds = reservations?.flatMap((res) =>
-        res.roomDetails.map((detail) => detail.roomId.toString())
+      // Find reservations that overlap with our target date
+      const reservations = await reservationModel
+        .find({
+          status: { $ne: "cancel" },
+          companyId: companyId,
+          $or: [
+            {
+              // Reservation overlaps with our target date
+              checkInDate: { $lt: outDate },
+              checkOutDate: { $gte: inDate },
+            },
+            {
+              // Or has room details that overlap
+              "roomDetails.checkOutDate": { $gt: inDate },
+            },
+          ],
+        })
+        .lean();
+
+      // Get IDs of rooms that are occupied on our target date
+      const reservedRoomIds = reservations.flatMap((reservation) =>
+        reservation.roomDetails
+          .filter((roomDetail) => {
+            // Room is occupied if:
+            // 1. Its check-out is AFTER our check-in date (same day check-out is available)
+            // AND
+            // 2. The reservation check-in is BEFORE our check-out date
+            const roomCheckOut = moment(roomDetail.checkOutDate);
+            const resCheckIn = moment(reservation.checkInDate);
+            return (
+              roomCheckOut.isAfter(inDate, "day") &&
+              resCheckIn.isBefore(outDate, "day")
+            );
+          })
+          .map((roomDetail) => roomDetail.roomId.toString())
       );
 
-      // 4. Filter out reserved rooms
+      // Filter available rooms
       const availableRooms = allRooms
         .filter((room) => !reservedRoomIds.includes(room._id.toString()))
         .sort((a, b) => a.name.localeCompare(b.name));
 
-      // 5. Return the result
       responseReturn(res, 200, { rooms: availableRooms });
     } catch (error) {
-      console.log("Error fetching available rooms:", error.message);
+      console.error("Error fetching available rooms:", error.message);
       responseReturn(res, 500, { error: "Internal server error" });
     }
   };
@@ -264,33 +293,57 @@ class roomController {
   get_booked_rooms = async (req, res) => {
     const { id } = req;
     const { companyId } = await ownerModel.findById(id);
-    const startDate = moment(req.query.startDate).format("YYYY-MM-DD");
-
-    const selectedDate = new Date(startDate);
-    var inDate = moment(selectedDate).format("YYYY-MM-DD");
-
-    const nextDay = new Date(selectedDate);
-    nextDay.setDate(nextDay.getDate() + 1);
-    var outDate = moment(nextDay).format("YYYY-MM-DD");
 
     try {
-      // 1. Get all rooms of the company
-      const allRooms = await roomModel.find({ companyId });
+      const startDate = moment(req.query.startDate);
+      if (!startDate.isValid()) {
+        return responseReturn(res, 400, { error: "Invalid start date" });
+      }
 
-      // 2. Find all reservations that overlap with the date
-      const reservations = await reservationModel.find({
-        status: { $ne: "cancel" },
-        checkInDate: { $lt: outDate },
-        checkOutDate: { $gt: inDate },
-        companyId: companyId,
-      });
-      // 3. Safely collect reserved room IDs
-      const reservedRoomIds = reservations.flatMap((res) =>
-        Array.isArray(res.roomDetails)
-          ? res.roomDetails.map((detail) => detail.roomId.toString())
-          : []
+      const inDate = startDate.format("YYYY-MM-DD");
+      const outDate = startDate.clone().add(1, "day").format("YYYY-MM-DD");
+
+      // Get all rooms
+      const allRooms = await roomModel
+        .find({ companyId })
+        .populate("categoryId");
+
+      // Find reservations that overlap with our target date
+      const reservations = await reservationModel
+        .find({
+          status: { $ne: "cancel" },
+          companyId: companyId,
+          $or: [
+            {
+              // Reservation overlaps with our target date
+              checkInDate: { $lt: outDate },
+              checkOutDate: { $gte: inDate },
+            },
+            {
+              // Or has room details that overlap
+              "roomDetails.checkOutDate": { $gt: inDate },
+            },
+          ],
+        })
+        .lean();
+
+      // Get IDs of rooms that are occupied on our target date
+      const reservedRoomIds = reservations.flatMap((reservation) =>
+        reservation.roomDetails
+          .filter((roomDetail) => {
+            // Room is occupied if:
+            // 1. Its check-out is AFTER our check-in date (same day check-out is available)
+            // AND
+            // 2. The reservation check-in is BEFORE our check-out date
+            const roomCheckOut = moment(roomDetail.checkOutDate);
+            const resCheckIn = moment(reservation.checkInDate);
+            return (
+              roomCheckOut.isAfter(inDate, "day") &&
+              resCheckIn.isBefore(outDate, "day")
+            );
+          })
+          .map((roomDetail) => roomDetail.roomId.toString())
       );
-
       // 4. Filter rooms that are booked
       const bookedRooms = allRooms
         .filter((room) => reservedRoomIds.includes(room._id.toString()))

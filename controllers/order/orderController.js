@@ -3495,16 +3495,17 @@ class orderController {
       return res.status(400).json({ message: "Date is required." });
     }
 
-    const selectedDate = new Date(date);
-    var inDate = moment(selectedDate).format("YYYY-MM-DD");
+    // Format input date correctly
+    const selectedDate = moment(date).startOf("day");
+    const inDate = selectedDate.format("YYYY-MM-DD");
 
-    const nextDay = new Date(selectedDate);
-    nextDay.setDate(nextDay.getDate() + 1);
-    var outDate = moment(nextDay).format("YYYY-MM-DD");
+    // Calculate next day for inclusive range check
+    const outDate = selectedDate.clone().add(1, "days").format("YYYY-MM-DD");
+
     let companyId;
 
     try {
-      // 1. Determine companyId
+      // 1️⃣ Get the company ID for owner or staff
       if (role === "staff") {
         const staff = await staffModel.findById(id);
         if (!staff) {
@@ -3523,22 +3524,25 @@ class orderController {
         return res.status(400).json({ message: "Company ID not found." });
       }
 
-      // 2. Query reservations
+      // 2️⃣ Find reservations that COULD overlap
       const reservations = await reservationModel
         .find({
           status: { $ne: "cancel" },
-          checkInDate: { $lt: outDate },
-          checkOutDate: { $gte: inDate },
+          checkInDate: { $lt: outDate }, // Reservation-level: in before next day
           companyId: companyId,
         })
         .populate({
-          path: "roomDetails.roomId", // Ensure room belongs to user's company
+          path: "roomDetails.roomId",
         })
         .populate("residentId")
         .lean();
-      // 3. Filter out any reservation where roomId was not matched
-      const validReservations = reservations.filter(
-        (res) => res.roomDetails.roomId !== null
+
+      // 3️⃣ Filter by room-level checkOutDate overlap
+      const validReservations = reservations.filter((res) =>
+        res.roomDetails?.some(
+          (rd) =>
+            rd.roomId !== null && moment(rd.checkOutDate).isSameOrAfter(inDate)
+        )
       );
 
       res.status(200).json({
@@ -3555,8 +3559,8 @@ class orderController {
   };
 
   getReservationsByDateAndStatusStayView = async (req, res) => {
-    const { id, role } = req; // Authenticated user's ID and role
-    const { startDate, numberOfDays } = req.query; // Expecting startDate and numberOfDays
+    const { id, role } = req;
+    const { startDate, numberOfDays } = req.query;
 
     if (!startDate || !numberOfDays) {
       return res
@@ -3564,13 +3568,13 @@ class orderController {
         .json({ message: "Start date and number of days are required." });
     }
 
-    // Define the full date range for the query
-    const rangeStartDate = moment(startDate).startOf("day"); // Inclusive start
+    const rangeStartDate = moment(startDate).startOf("day");
     const rangeEndDate = moment(startDate)
       .add(parseInt(numberOfDays), "days")
-      .startOf("day"); // Exclusive end
-    const finalEndDate = moment(rangeEndDate).format("YYYY-MM-DD");
-    const finalStartDate = moment(rangeStartDate).format("YYYY-MM-DD");
+      .startOf("day");
+    const finalStartDate = rangeStartDate.format("YYYY-MM-DD");
+    const finalEndDate = rangeEndDate.format("YYYY-MM-DD");
+
     if (!rangeStartDate.isValid() || !rangeEndDate.isValid()) {
       return res.status(400).json({ message: "Invalid date format provided." });
     }
@@ -3578,63 +3582,51 @@ class orderController {
     let companyId;
 
     try {
-      // 1. Determine companyId
       if (role === "staff") {
         const staff = await staffModel.findById(id);
-        if (!staff) {
+        if (!staff)
           return res.status(404).json({ message: "Staff not found." });
-        }
         companyId = staff.companyId;
       } else {
         const owner = await ownerModel.findById(id);
-        if (!owner) {
+        if (!owner)
           return res.status(404).json({ message: "Owner not found." });
-        }
         companyId = owner.companyId;
       }
 
       if (!companyId) {
         return res.status(400).json({ message: "Company ID not found." });
       }
-      // 2. Query reservations that overlap with the given date range
+
+      // Step 1: Find reservations with checkInDate before rangeEndDate
       const reservations = await reservationModel
         .find({
           companyId: companyId,
-          status: { $ne: "cancel" }, // Exclude 'cancel' status
-          // Reservation overlaps with the range if:
-          // (its checkInDate is before the rangeEndDate) AND (its checkOutDate is after or on the rangeStartDate)
-          checkInDate: { $lte: finalEndDate }, // Reservation starts before the end of the range
-          checkOutDate: { $gte: finalStartDate }, // Reservation ends after or on the start of the range
+          status: { $ne: "cancel" },
+          checkInDate: { $lte: finalEndDate },
         })
-        .populate({
-          path: "roomDetails.roomId", // Populate room details within roomDetails array
-        })
-        .populate("residentId") // Populate guest details
-        .lean(); // Use lean() for faster query results if you don't need Mongoose documents
-      // 3. Filter out any reservation where roomDetails.roomId was not matched
-      // This can happen if a room was deleted or ID is bad.
-      const totalReservations = await reservationModel
-        .find({
-          companyId: companyId,
-          status: { $ne: "cancel" }, // Exclude 'cancel' status
-          // Reservation overlaps with the range if:
-          // (its checkInDate is before the rangeEndDate) AND (its checkOutDate is after or on the rangeStartDate)
-          checkInDate: { $lte: finalEndDate }, // Reservation starts before the end of the range
-          checkOutDate: { $gte: finalStartDate }, // Reservation ends after or on the start of the range
-        })
-        .countDocuments();
-      const validReservations = reservations.filter((res) =>
-        res.roomDetails?.some((detail) => detail.roomId !== null)
-      );
+        .populate({ path: "roomDetails.roomId" })
+        .populate("residentId")
+        .lean();
+
+      // Step 2: Filter each reservation where any roomDetails.checkOutDate >= finalStartDate
+      const validReservations = reservations.filter((reservation) => {
+        return reservation.roomDetails?.some((detail) => {
+          return (
+            detail.roomId !== null &&
+            moment(detail.checkOutDate).isSameOrAfter(finalStartDate)
+          );
+        });
+      });
 
       res.status(200).json({
-        message: "Reservations fetched",
+        message: "Reservations fetched successfully.",
         reservations: validReservations,
       });
     } catch (err) {
       console.error("Reservation fetch error:", err);
       res.status(500).json({
-        message: "Failed to fetch reservations",
+        message: "Failed to fetch reservations.",
         error: err.message,
       });
     }

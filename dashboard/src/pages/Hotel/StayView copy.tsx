@@ -1,3 +1,5 @@
+// StayView.tsx — Final Fix with Popup + Icons in Full-Day and Half-Day Blocks 💎
+
 import React, { useEffect, useState, useMemo, useCallback } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
@@ -5,27 +7,29 @@ import { useDispatch, useSelector } from "react-redux";
 import moment from "moment";
 import { useNavigate } from "react-router-dom";
 
-import {
-  categories_get,
-  get_a_room,
-  rooms_get,
-} from "../../store/Actions/roomAction";
+import { categories_get, rooms_get } from "../../store/Actions/roomAction";
 import {
   get_a_reservation,
-  get_reservations_by_date_status,
+  get_reservations_by_date_status_stay_view,
 } from "../../store/Actions/foodAction";
 
 const StayView = () => {
-  const [startDate, setStartDate] = useState(new Date());
+  const [startDate, setStartDate] = useState<Date>(
+    moment().startOf("day").toDate()
+  );
+  const [popupRes, setPopupRes] = useState<any>(null);
+  const [popupRoom, setPopupRoom] = useState<string | null>(null);
+  const [popupDate, setPopupDate] = useState<moment.Moment | null>(null);
+  const [popupType, setPopupType] = useState<string>("");
+
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const { categories, rooms } = useSelector((state) => state.room);
-  const { reservations, loadingReservations, reservationsError } = useSelector(
-    (state) => state.food
-  );
+  const { categories, rooms } = useSelector((state: any) => state.room);
+  const { reservations } = useSelector((state: any) => state.food);
 
   const numberOfDays = 7;
+  const dateCellWidth = 150;
 
   useEffect(() => {
     dispatch(rooms_get());
@@ -33,34 +37,17 @@ const StayView = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    const formatted = moment(startDate).format("YYYY-MM-DD");
-    // 👉 fetch all statuses for that date
     dispatch(
-      get_reservations_by_date_status(
-        formatted /*, ["will_check","checked_in","checked_out","complimentary","maintenance","out_of_order"]*/
-      )
+      get_reservations_by_date_status_stay_view({ startDate, numberOfDays })
     );
-  }, [startDate, dispatch]);
+  }, [startDate, numberOfDays, dispatch]);
 
-  useEffect(() => {
-    console.log(
-      "Reservations:",
-      reservations.map((r) => ({
-        id: r._id,
-        status: r.status,
-        checkIn: r.checkInDate,
-        checkOut: r.checkOutDate,
-        rooms: r.roomDetails?.map((d) => d.roomId?.name).join(", "),
-      }))
-    );
-  }, [reservations]);
-
-  const getStatusColor = useCallback((st) => {
-    switch (st) {
+  const getStatusColor = useCallback((status: string) => {
+    switch (status) {
       case "will_check":
-        return "bg-green-500";
+        return "bg-red-200";
       case "checked_in":
-        return "bg-blue-500";
+        return "bg-green-500";
       case "checked_out":
         return "bg-orange-400";
       case "out_of_order":
@@ -69,301 +56,402 @@ const StayView = () => {
         return "bg-gray-400";
       case "complimentary":
         return "bg-yellow-400";
+      case "cancel":
+        return "bg-red-200";
       default:
         return "bg-gray-200";
     }
   }, []);
 
-  const newReservation = useCallback(
-    (roomId) => {
-      dispatch(get_a_room(roomId));
-      navigate("/hotel/new-reservation");
-    },
-    [dispatch, navigate]
-  );
   const viewInvoice = useCallback(
-    (resId) => {
-      dispatch(get_a_reservation(resId));
+    (id: string) => {
+      dispatch(get_a_reservation(id));
       navigate("/hotel/invoice");
     },
     [dispatch, navigate]
   );
+
   const editReservation = useCallback(
-    (resId) => {
-      dispatch(get_a_reservation(resId));
-      navigate("/hotel/reservation/edit");
+    (reservationId, roomId, startDate) => {
+      const formattedDate = moment(startDate).format("YYYY-MM-DD");
+
+      navigate(
+        `/hotel/reservation/edit?reservationId=${reservationId}&&roomId=${roomId}&&checkInDate=${formattedDate}`
+      );
     },
     [dispatch, navigate]
   );
 
+  const newReservation = (roomId: string, date: moment.Moment) => {
+    navigate(
+      `/hotel/new-reservation?roomId=${roomId}&checkInDate=${date.format("YYYY-MM-DD")}`
+    );
+  };
+
   const dates = useMemo(
     () =>
       Array.from({ length: numberOfDays }, (_, i) =>
-        moment(startDate).add(i, "days")
+        moment(startDate).add(i, "days").startOf("day")
       ),
-    [startDate]
+    [startDate, numberOfDays]
   );
 
   const roomsByCategory = useMemo(() => {
-    const grp = {};
-    categories.forEach((c) => {
-      grp[c._id] = {
-        ...c,
-        rooms: rooms.filter((r) => r.category === c._id),
-      };
+    const grouped: any = {};
+    categories.forEach((cat: any) => {
+      const roomList = cat.roomId
+        ?.map((id: string) => rooms.find((r: any) => r._id === id))
+        .filter(Boolean);
+      grouped[cat._id] = { ...cat, rooms: roomList };
     });
-    return grp;
+    return grouped;
   }, [categories, rooms]);
 
-  const getReservationsForRoomAndDate = useCallback(
-    (roomId, date) => {
-      const dayStart = moment(date).startOf("day");
-      return reservations.filter((r) => {
-        const ci = moment(r.checkInDate).startOf("day");
-        const co = moment(r.checkOutDate).startOf("day").add(1, "day");
-        const inRes = r.roomDetails?.some((d) => d.roomId?._id === roomId);
-        return inRes && dayStart.isBetween(ci, co, null, "[)");
-      });
-    },
-    [reservations]
-  );
-
-  const availability = useMemo(() => {
-    const obj = {};
-    dates.forEach((d) => {
-      const key = d.format("YYYY-MM-DD");
-      const occupied = rooms.reduce((acc, r) => {
-        return acc + (getReservationsForRoomAndDate(r._id, d).length > 0);
-      }, 0);
-      obj[key] = rooms.length - occupied;
-    });
-    return obj;
-  }, [dates, rooms, getReservationsForRoomAndDate]);
-
   return (
-    <>
-      <div className="flex justify-between items-center bg-gray-800 text-white p-3">
+    <div className="p-4">
+      <div className="flex justify-between items-center bg-gray-800 text-white p-3 sticky top-0 z-50">
         <DatePicker
           className="bg-gray-800 text-white text-lg px-2 py-1 rounded"
           selected={startDate}
-          onChange={(d) => setStartDate(d)}
+          onChange={(d: Date) => setStartDate(d)}
           dateFormat="yyyy-MM-dd"
         />
         <h2 className="text-xl font-semibold">Stay View</h2>
         <div className="flex gap-2 text-sm">
-          <LegendDot color="bg-green-500" label="Assigned" />
-          <LegendDot color="bg-blue-500" label="Checked In" />
+          <LegendDot color="bg-red-200" label="Assigned" />
+          <LegendDot color="bg-green-500" label="Checked In" />
           <LegendDot color="bg-orange-400" label="Checked Out" />
-          <LegendDot color="bg-yellow-400" label="Complimentary" />
-          <LegendDot color="bg-gray-400" label="Maintenance" />
-          <LegendDot color="bg-red-500" label="Out of Order" />
         </div>
       </div>
 
-      {loadingReservations && (
-        <div className="text-center p-4 text-lg">Loading Reservations...</div>
-      )}
-      {reservationsError && (
-        <div className="text-center p-4 text-red-500">
-          Error:{" "}
-          {reservationsError.message || JSON.stringify(reservationsError)}
-        </div>
-      )}
-
-      <div className="w-full overflow-x-auto border bg-white shadow">
-        <div className="min-w-[1200px]">
-          {/* Headers */}
-          <div className="grid grid-cols-[100px_repeat(7,minmax(150px,1fr))] border-b bg-gray-100">
-            <div className="py-2 px-3 font-semibold text-center">Room</div>
-            {dates.map((d, i) => (
-              <div key={i} className="py-2 px-3 text-center">
-                {d.format("D MMM")}
-                <br />
-                <span className="text-sm text-gray-600">{d.format("ddd")}</span>
-              </div>
-            ))}
+      <div
+        className="grid sticky top-[60px] bg-white z-40"
+        style={{
+          gridTemplateColumns: `150px repeat(${numberOfDays}, ${dateCellWidth}px)`,
+        }}
+      >
+        <div className="bg-gray-200 font-semibold text-center p-2">Room</div>
+        {dates.map((d, i) => (
+          <div key={i} className="bg-gray-100 text-center p-2">
+            {d.format("D MMM")}
+            <div className="text-sm text-gray-600">{d.format("ddd")}</div>
           </div>
+        ))}
+      </div>
 
-          {/* Rooms */}
-          {Object.values(roomsByCategory).map((cat) => (
+      <div className="overflow-auto max-h-[calc(100vh-120px)]">
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `150px repeat(${numberOfDays}, ${dateCellWidth}px)`,
+          }}
+        >
+          {Object.values(roomsByCategory).map((cat: any) => (
             <React.Fragment key={cat._id}>
-              <div className="col-span-full py-2 px-3 bg-primary text-white font-semibold">
+              <div className="col-span-full bg-gray-300 font-semibold p-2">
                 {cat.name}
               </div>
-              {cat.roomId.map((room) => (
-                <div
-                  key={room._id}
-                  className="grid grid-cols-[100px_repeat(7,minmax(150px,1fr))] border-b"
-                >
-                  <div className="py-3 px-3 text-center font-medium">
+              {cat.roomId.map((room: any) => (
+                <React.Fragment key={room._id}>
+                  <div className="border-r text-sm font-medium flex items-center justify-center bg-gray-50">
                     {room.name}
                   </div>
+                  {dates.map((date) => {
+                    const cellKey = `${room._id}_${date.format("YYYY-MM-DD")}`;
 
-                  {dates.map((d, di) => {
-                    const resArr = getReservationsForRoomAndDate(room._id, d);
-                    const has = resArr.length > 0;
-                    const res = has ? resArr[0] : null;
+                    const checkInRes = reservations?.find(
+                      (r: any) =>
+                        r.roomDetails?.some(
+                          (rd: any) => rd.roomId?._id === room._id
+                        ) && moment(r.checkInDate).isSame(date, "day")
+                    );
 
-                    let span = 1;
-                    let isStart = false;
-                    if (res) {
-                      const ci = moment(res.checkInDate).startOf("day");
-                      span = Math.min(
-                        moment(res.checkOutDate).diff(ci, "days") || 1,
-                        numberOfDays - di
-                      );
-                      isStart = ci.isSame(d, "day");
-                    }
+                    const checkOutRes = reservations?.find(
+                      (r: any) =>
+                        r.roomDetails?.some(
+                          (rd: any) => rd.roomId?._id === room._id
+                        ) && moment(r.checkOutDate).isSame(date, "day")
+                    );
 
-                    if (!has) {
+                    const fullRes = reservations.find(
+                      (r: any) =>
+                        r.roomDetails?.some(
+                          (rd: any) => rd.roomId?._id === room._id
+                        ) &&
+                        moment(r.checkInDate).isBefore(date, "day") &&
+                        moment(r.checkOutDate).isAfter(date, "day")
+                    );
+
+                    const sameResId =
+                      checkInRes?._id && checkInRes._id === checkOutRes?._id;
+
+                    if (!checkInRes && !checkOutRes && !fullRes) {
                       return (
                         <div
-                          key={di}
-                          className="relative h-20 border-l bg-gray-50 hover:bg-gray-100"
+                          key={cellKey}
+                          className="flex items-center justify-center border text-gray-400 text-xl cursor-pointer h-full"
+                          onClick={() => newReservation(room._id, date)}
                         >
-                          <div className="flex flex-col items-center justify-center h-full">
-                            <span className="text-sm text-gray-500">
-                              Available
-                            </span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                newReservation(room._id);
-                              }}
-                              className="p-1 rounded-full text-gray-800 hover:bg-gray-200 mt-1"
-                            >
-                              <svg
-                                className="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth="2"
-                                  d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"
-                                />
-                              </svg>
-                            </button>
-                          </div>
+                          +
                         </div>
-                      );
-                    }
-
-                    if (!isStart) {
-                      // Reserve span cells without rendering block
-                      return (
-                        <div
-                          key={di}
-                          className="border-l"
-                          style={{ gridColumn: `span ${span}` }}
-                        />
                       );
                     }
 
                     return (
                       <div
-                        key={di}
-                        className={`relative h-20 border-l ${getStatusColor(
-                          res.status
-                        )}`}
-                        style={{ gridColumn: `span ${span}` }}
+                        key={cellKey}
+                        className="relative border flex flex-col cursor-pointer"
+                        onClick={() => {
+                          if (checkOutRes && !checkInRes && !fullRes) {
+                            setPopupRes(checkOutRes);
+                            setPopupType("checkout");
+                          } else if (checkInRes && !checkOutRes && !fullRes) {
+                            setPopupRes(checkInRes);
+                            setPopupType("checkin");
+                          } else if (fullRes) {
+                            setPopupRes(fullRes);
+                            setPopupType("full");
+                          } else {
+                            setPopupRes(null);
+                            setPopupType("available");
+                          }
+                          setPopupRoom(room._id);
+                          setPopupDate(date);
+                        }}
                       >
-                        <div
-                          className="flex flex-col h-full w-full rounded-sm p-2 text-white"
-                          title={`${res.residentId?.name || "Guest"} (${moment(
-                            res.checkInDate
-                          ).format(
-                            "MMM D"
-                          )} - ${moment(res.checkOutDate).format("MMM D")})`}
-                        >
-                          <span className="font-semibold text-sm truncate">
-                            {res.residentId?.name ||
-                              {
-                                out_of_order: "Out of Order",
-                                maintenance: "Maintenance",
-                              }[res.status] ||
-                              "Guest"}
-                          </span>
-                          <span className="text-xs opacity-90 truncate">
-                            {moment(res.checkInDate).format("MMM D")} -{" "}
-                            {moment(res.checkOutDate).format("MMM D")}
-                          </span>
-                          <span className="text-xs opacity-80 mt-auto">
-                            Status: {res.status.replace(/_/g, " ")}
-                          </span>
-                          <div className="flex gap-1 mt-1 justify-end">
-                            {(res.status === "will_check" ||
-                              res.status === "checked_in" ||
-                              res.status === "checked_out" ||
-                              res.status === "complimentary") && (
+                        {checkOutRes && (!sameResId || !checkInRes) && (
+                          <div
+                            className={`h-1/2 ${getStatusColor(checkOutRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-t-full`}
+                          >
+                            <span>
+                              {checkOutRes.residentId?.name.slice(0, 10)}
+                            </span>
+                            <div className="flex gap-1 ml-2">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  viewInvoice(res._id);
+                                  viewInvoice(checkOutRes._id);
                                 }}
-                                title="View Invoice"
-                                className="p-1 rounded-full hover:bg-white transition-colors"
+                                title="Invoice"
                               >
-                                {/* invoice svg */}
-                                ...
+                                📄
                               </button>
-                            )}
-                            {(res.status === "will_check" ||
-                              res.status === "checked_in" ||
-                              res.status === "complimentary") && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  editReservation(res._id);
+                                  editReservation(
+                                    checkOutRes._id,
+                                    room._id,
+                                    date
+                                  );
                                 }}
-                                title="Edit Reservation"
-                                className="p-1 rounded-full hover:bg-white transition-colors"
+                                title="Edit"
                               >
-                                {/* edit svg */}
-                                ...
+                                ✏️
                               </button>
-                            )}
-                            {res.status === "checked_out" && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  newReservation(room._id);
-                                }}
-                                title="New Booking"
-                                className="p-1 rounded-full hover:bg-white transition-colors"
-                              >
-                                {/* plus svg */}
-                                ...
-                              </button>
-                            )}
+                            </div>
                           </div>
-                        </div>
+                        )}
+                        {checkInRes && (!sameResId || !checkOutRes) && (
+                          <div
+                            className={`h-1/2 ${getStatusColor(checkInRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-b-full`}
+                          >
+                            <span>
+                              {checkInRes.residentId?.name.slice(0, 10)}
+                            </span>
+                            <div className="flex gap-1 ml-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  viewInvoice(checkInRes._id);
+                                }}
+                                title="Invoice"
+                              >
+                                📄
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  editReservation(
+                                    checkInRes._id,
+                                    room._id,
+                                    date
+                                  );
+                                }}
+                                title="Edit"
+                              >
+                                ✏️
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                        {checkInRes && checkOutRes && sameResId && (
+                          <>
+                            <div
+                              className={`h-1/2 ${getStatusColor(checkOutRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-t-full`}
+                            >
+                              <span>
+                                {checkOutRes.residentId?.name.slice(0, 10)}
+                              </span>
+                              <div className="flex gap-1 ml-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    viewInvoice(checkOutRes._id);
+                                  }}
+                                  title="Invoice"
+                                >
+                                  📄
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    editReservation(
+                                      checkOutRes._id,
+                                      room._id,
+                                      date
+                                    );
+                                  }}
+                                  title="Edit"
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            </div>
+                            <div
+                              className={`h-1/2 ${getStatusColor(checkInRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-b-full`}
+                            >
+                              <span>
+                                {checkInRes.residentId?.name.slice(0, 10)}
+                              </span>
+                              <div className="flex gap-1 ml-2">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    viewInvoice(checkInRes._id);
+                                  }}
+                                  title="Invoice"
+                                >
+                                  📄
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    editReservation(
+                                      checkInRes._id,
+                                      room._id,
+                                      date
+                                    );
+                                  }}
+                                  title="Edit"
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                        {fullRes && !checkInRes && !checkOutRes && (
+                          <div
+                            className={`h-full ${getStatusColor(fullRes.status)} px-2 text-white text-xs flex items-center justify-between rounded-full`}
+                          >
+                            <span>{fullRes.residentId?.name.slice(0, 10)}</span>
+                            <div className="flex gap-1 ml-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  viewInvoice(fullRes._id);
+                                }}
+                                title="Invoice"
+                              >
+                                📄
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  editReservation(fullRes._id, room._id, date);
+                                }}
+                                title="Edit"
+                              >
+                                ✏️
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
-                </div>
+                </React.Fragment>
               ))}
             </React.Fragment>
           ))}
-
-          {/* Available summary */}
-          <div className="grid grid-cols-[100px_repeat(7,minmax(150px,1fr))] border-t-2 mt-4 bg-gray-100">
-            <div className="py-2 px-3 text-center font-semibold">Available</div>
-            {dates.map((d, i) => (
-              <div key={i} className="py-2 px-3 text-center">
-                {availability[d.format("YYYY-MM-DD")] || 0}
-              </div>
-            ))}
-          </div>
         </div>
       </div>
-    </>
+
+      {popupRoom && popupDate && (
+        <div className="fixed inset-0 z-50 bg-black bg-opacity-40 flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+            <h2 className="text-lg font-bold mb-2">
+              {popupRes ? popupRes.residentId?.name.slice(0, 10) : "Available"}
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              {popupDate.format("dddd, MMM D")}
+            </p>
+            <div className="flex justify-end gap-2">
+              {popupType !== "available" && (
+                <>
+                  <button
+                    onClick={() => viewInvoice(popupRes._id)}
+                    className="bg-gray-200 px-3 py-1 rounded hover:bg-gray-300"
+                  >
+                    Invoice
+                  </button>
+                  <button
+                    onClick={() =>
+                      editReservation(popupRes._id, popupRoom._id, popupDate)
+                    }
+                    className="bg-green-500 text-white px-3 py-1 rounded hover:bg-blue-600"
+                  >
+                    Edit
+                  </button>
+                </>
+              )}
+              {popupType === "checkout" && (
+                <button
+                  onClick={() => newReservation(popupRoom!, popupDate!)}
+                  className="bg-red-200 text-black px-3 py-1 rounded hover:bg-green-600"
+                >
+                  New Booking
+                </button>
+              )}
+              {popupType === "available" && (
+                <button
+                  onClick={() => newReservation(popupRoom!, popupDate!)}
+                  className="bg-red-200 text-black px-3 py-1 rounded hover:bg-green-600"
+                >
+                  New Booking
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setPopupRes(null);
+                  setPopupRoom(null);
+                  setPopupDate(null);
+                  setPopupType("");
+                }}
+                className="text-sm text-gray-600"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
-const LegendDot = ({ color, label }) => (
+const LegendDot = ({ color, label }: { color: string; label: string }) => (
   <span className="flex items-center gap-1">
     <span className={`w-3 h-3 rounded-full ${color}`}></span> {label}
   </span>
