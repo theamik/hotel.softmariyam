@@ -194,6 +194,306 @@ class orderController {
     }
   };
 
+  // place_order = async (req, res) => {
+  //   const { id, role } = req;
+  //   const {
+  //     cartItems,
+  //     totalAmount,
+  //     totalQuantity,
+  //     discount,
+  //     finalAmount,
+  //     partyId,
+  //     delivery,
+  //     service,
+  //     party,
+  //     remark,
+  //   } = req.body;
+
+  //   let generatedByUserName;
+  //   let companyId;
+  //   let branchId = null; // Initialize as null for cases where staff is not applicable
+  //   let session; // Declare session variable for transaction
+
+  //   try {
+  //     // Start Mongoose session for transaction
+  //     session = await mongoose.startSession();
+  //     session.startTransaction();
+
+  //     // 1. Optimize User Data Fetching: Fetch staff/owner data once
+  //     if (role === "staff") {
+  //       const staff = await staffModel.findById(id).session(session);
+  //       if (!staff) {
+  //         await session.abortTransaction();
+  //         session.endSession();
+  //         return responseReturn(res, 404, { error: "Staff user not found." });
+  //       }
+  //       branchId = staff.branchId;
+  //       companyId = staff.companyId;
+  //       generatedByUserName = staff.name;
+  //     } else {
+  //       // Assuming 'owner' role
+  //       const owner = await ownerModel.findById(id).session(session);
+  //       if (!owner) {
+  //         await session.abortTransaction();
+  //         session.endSession();
+  //         return responseReturn(res, 404, { error: "Owner user not found." });
+  //       }
+  //       companyId = owner.companyId;
+  //       generatedByUserName = owner.name;
+  //     }
+
+  //     // 2. Capture Full Date and Time for consistency
+  //     const currentDateTime = new Date(); // Captures full timestamp (date and time)
+
+  //     // 3. Fetch Parties Needed for Transactions using findOne
+  //     const credit_party = await partyModel
+  //       .findOne({
+  //         accountType: "res_sales_account",
+  //         under: "restaurant",
+  //         companyId: companyId,
+  //       })
+  //       .session(session);
+
+  //     const discount_party = await partyModel
+  //       .findOne({
+  //         accountType: "discount",
+  //         under: "restaurant",
+  //         companyId: companyId,
+  //       })
+  //       .session(session);
+
+  //     const debit_party = await partyModel
+  //       .findOne({
+  //         accountType: "accounts_receivable",
+  //         under: "restaurant",
+  //         companyId: companyId,
+  //       })
+  //       .session(session);
+
+  //     // Basic validation for critical parties
+  //     if (!credit_party || !debit_party) {
+  //       await session.abortTransaction();
+  //       session.endSession();
+  //       return responseReturn(res, 500, {
+  //         error:
+  //           "Required transaction parties (Sales, Accounts Receivable) not configured.",
+  //       });
+  //     }
+  //     if (discount > 0 && !discount_party) {
+  //       await session.abortTransaction();
+  //       session.endSession();
+  //       return responseReturn(res, 500, {
+  //         error: "Discount party not configured for transactions.",
+  //       });
+  //     }
+
+  //     // 4. Generate Unique ID and Order Number
+  //     const UniqueId = Date.now().toString(36).toUpperCase();
+  //     const latestOrder = await orderModel
+  //       .findOne({ companyId: companyId })
+  //       .sort({ orderNo: -1 })
+  //       .session(session);
+  //     const newOrderId = latestOrder ? Number(latestOrder.orderNo) + 1 : 200001;
+
+  //     let transaction;
+  //     let discountTransaction = null;
+  //     let order; // Declare order here so it's accessible later
+
+  //     // Create transactions based on whether a discount is applied
+  //     if (discount > 0) {
+  //       transaction = await transactionModel.create(
+  //         [
+  //           {
+  //             transactionNo: UniqueId,
+  //             debit: debit_party._id,
+  //             credit: credit_party._id,
+  //             generatedBy: generatedByUserName,
+  //             balance: finalAmount,
+  //             date: currentDateTime, // Use full date and time
+  //             orderNo: newOrderId,
+  //             companyId: companyId,
+  //             ...(branchId && { branchId }), // Conditionally add branchId
+  //           },
+  //         ],
+  //         { session }
+  //       );
+
+  //       discountTransaction = await transactionModel.create(
+  //         [
+  //           {
+  //             transactionNo: UniqueId,
+  //             debit: discount_party._id,
+  //             credit: credit_party._id,
+  //             generatedBy: generatedByUserName,
+  //             balance: discount,
+  //             date: currentDateTime, // Use full date and time
+  //             orderNo: newOrderId,
+  //             companyId: companyId,
+  //             ...(branchId && { branchId }), // Conditionally add branchId
+  //           },
+  //         ],
+  //         { session }
+  //       );
+  //     } else {
+  //       transaction = await transactionModel.create(
+  //         [
+  //           {
+  //             transactionNo: UniqueId,
+  //             debit: debit_party._id,
+  //             credit: credit_party._id,
+  //             generatedBy: generatedByUserName,
+  //             balance: finalAmount,
+  //             date: currentDateTime, // Use full date and time
+  //             companyId: companyId,
+  //             orderNo: newOrderId,
+  //             ...(branchId && { branchId }), // Conditionally add branchId
+  //           },
+  //         ],
+  //         { session }
+  //       );
+  //     }
+
+  //     // 5. Create the Order Entry
+  //     order = await orderModel.create(
+  //       [
+  //         {
+  //           orderNo: newOrderId,
+  //           transactionId: transaction[0]._id, // Access the first element of the array
+  //           party: party,
+  //           generatedBy: generatedByUserName,
+  //           cartItems,
+  //           totalAmount,
+  //           totalQuantity,
+  //           discount,
+  //           delivery,
+  //           service,
+  //           partyId,
+  //           finalAmount,
+  //           date: currentDateTime, // Use full date and time
+  //           companyId: companyId,
+  //           remark,
+  //           ...(branchId && { branchId }), // Conditionally add branchId
+  //         },
+  //       ],
+  //       { session }
+  //     );
+  //     order = order[0]; // Get the actual order object from the array
+
+  //     // 6. Update Party Balances
+  //     debit_party.balance =
+  //       (Number(debit_party.balance) || 0) + Number(finalAmount);
+  //     await debit_party.save({ session });
+
+  //     if (discount > 0 && discount_party) {
+  //       discount_party.balance =
+  //         (Number(discount_party.balance) || 0) + Number(discount);
+  //       await discount_party.save({ session });
+  //     }
+
+  //     // Assuming credit_party (res_sales_account) is an income account whose balance increases with credits.
+  //     // It receives credit entries for both finalAmount and discount from the transactions.
+  //     credit_party.balance =
+  //       (Number(credit_party.balance) || 0) -
+  //       Number(finalAmount) -
+  //       Number(discount);
+  //     await credit_party.save({ session });
+
+  //     // 7. Handle Bill Transfer Logic (if partyId refers to a room)
+  //     const roomBill = await roomModel.findById(partyId).session(session);
+
+  //     if (roomBill) {
+  //       // This block executes if partyId is a valid room ID
+  //       const startDate = moment().format("YYYY-MM-DD");
+  //       const selectedDate = new Date(startDate);
+  //       var inDate = moment(selectedDate).format("YYYY-MM-DD");
+
+  //       const nextDay = new Date(selectedDate);
+  //       nextDay.setDate(nextDay.getDate() + 1);
+  //       var outDate = moment(nextDay).format("YYYY-MM-DD");
+
+  //       const targetReservation = await reservationModel
+  //         .findOne({
+  //           "roomDetails.roomId": partyId, // Check if the room exists in roomDetails
+  //           companyId: companyId,
+  //           status: { $nin: ["cancel", "checked_out"] }, // Target must be active
+  //           checkInDate: { $lte: outDate }, // Target starts on or before current reservation's new end date
+  //           checkOutDate: { $gte: inDate }, // Target ends after current reservation's new start date
+  //           // Only exclude if existingReservation is found and is different from the target
+  //         })
+  //         .populate("roomDetails.roomId")
+  //         .session(session);
+
+  //       console.log(
+  //         targetReservation
+  //           ? targetReservation._id
+  //           : "No target reservation found"
+  //       );
+  //       if (!targetReservation) {
+  //         await session.abortTransaction();
+  //         session.endSession();
+  //         return responseReturn(res, 400, {
+  //           message:
+  //             "No active reservation found for the selected Bill Transfer Room on the overlapping dates.",
+  //         });
+  //       }
+
+  //       // --- Accumulate data from existingReservation to targetReservation ---
+  //       console.log(
+  //         `Performing bill transfer to Reservation ${targetReservation.reservationNo}`
+  //       );
+
+  //       // Ensure restaurants array exists on targetReservation
+  //       if (!targetReservation.restaurants) {
+  //         targetReservation.restaurants = []; // Initialize as an empty array if it's null/undefined
+  //       }
+
+  //       console.log("first"); // This line doesn't seem to have a functional purpose here.
+
+  //       // b. Accumulate financial amounts (totalAmount, discount, due, finalAmount)
+  //       targetReservation.totalAmount =
+  //         (Number(targetReservation.totalAmount) || 0) +
+  //         (Number(order.totalAmount) || 0);
+  //       targetReservation.discount =
+  //         (Number(targetReservation.discount) || 0) +
+  //         (Number(order.discount) || 0);
+  //       targetReservation.due =
+  //         (Number(targetReservation.due) || 0) +
+  //         (Number(order.totalAmount) || 0);
+  //       targetReservation.finalAmount =
+  //         (Number(targetReservation.finalAmount) || 0) +
+  //         (Number(order.finalAmount) || 0);
+
+  //       // This is line 459:
+  //       targetReservation.restaurants.push({
+  //         restaurant: order.orderNo.toString(),
+  //         restaurantAmount: order.finalAmount,
+  //       });
+  //       // Save the updated target reservation
+  //       await targetReservation.save({ session });
+  //     }
+
+  //     // Commit the transaction if all operations are successful
+  //     await session.commitTransaction();
+  //     session.endSession();
+
+  //     // Send successful response
+  //     responseReturn(res, 201, {
+  //       order,
+  //       message: "Order placed successfully",
+  //     });
+  //   } catch (error) {
+  //     // Abort the transaction if any error occurs
+  //     if (session) {
+  //       await session.abortTransaction();
+  //       session.endSession();
+  //     }
+  //     console.error("Error placing order:", error); // Log the full error for debugging
+  //     responseReturn(res, 500, {
+  //       error: "Failed to place order due to an internal server error.",
+  //     });
+  //   }
+  // };
+
   place_order = async (req, res) => {
     const { id, role } = req;
     const {
@@ -211,129 +511,107 @@ class orderController {
 
     let generatedByUserName;
     let companyId;
-    let branchId = null; // Initialize as null for cases where staff is not applicable
-    let session; // Declare session variable for transaction
+    let branchId = null;
+    let session;
 
     try {
-      // Start Mongoose session for transaction
       session = await mongoose.startSession();
       session.startTransaction();
 
-      // 1. Optimize User Data Fetching: Fetch staff/owner data once
+      // 1. Fetch user (staff or owner)
       if (role === "staff") {
         const staff = await staffModel.findById(id).session(session);
-        if (!staff) {
-          await session.abortTransaction();
-          session.endSession();
-          return responseReturn(res, 404, { error: "Staff user not found." });
-        }
+        if (!staff) throw new Error("Staff user not found.");
         branchId = staff.branchId;
         companyId = staff.companyId;
         generatedByUserName = staff.name;
       } else {
-        // Assuming 'owner' role
         const owner = await ownerModel.findById(id).session(session);
-        if (!owner) {
-          await session.abortTransaction();
-          session.endSession();
-          return responseReturn(res, 404, { error: "Owner user not found." });
-        }
+        if (!owner) throw new Error("Owner user not found.");
         companyId = owner.companyId;
         generatedByUserName = owner.name;
       }
 
-      // 2. Capture Full Date and Time for consistency
-      const currentDateTime = new Date(); // Captures full timestamp (date and time)
+      // 2. Date setup
+      const currentDateTime = new Date();
 
-      // 3. Fetch Parties Needed for Transactions using findOne
-      const credit_party = await partyModel
-        .findOne({
-          accountType: "res_sales_account",
-          under: "restaurant",
-          companyId: companyId,
-        })
-        .session(session);
+      // 3. Fetch parties
+      const [credit_party, discount_party, debit_party] = await Promise.all([
+        partyModel
+          .findOne({
+            accountType: "res_sales_account",
+            under: "restaurant",
+            companyId,
+          })
+          .session(session),
+        partyModel
+          .findOne({ accountType: "discount", under: "restaurant", companyId })
+          .session(session),
+        partyModel
+          .findOne({
+            accountType: "accounts_receivable",
+            under: "restaurant",
+            companyId,
+          })
+          .session(session),
+      ]);
 
-      const discount_party = await partyModel
-        .findOne({
-          accountType: "discount",
-          under: "restaurant",
-          companyId: companyId,
-        })
-        .session(session);
-
-      const debit_party = await partyModel
-        .findOne({
-          accountType: "accounts_receivable",
-          under: "restaurant",
-          companyId: companyId,
-        })
-        .session(session);
-
-      // Basic validation for critical parties
       if (!credit_party || !debit_party) {
-        await session.abortTransaction();
-        session.endSession();
-        return responseReturn(res, 500, {
-          error:
-            "Required transaction parties (Sales, Accounts Receivable) not configured.",
-        });
+        throw new Error(
+          "Required transaction parties (Sales, Accounts Receivable) not configured."
+        );
       }
       if (discount > 0 && !discount_party) {
-        await session.abortTransaction();
-        session.endSession();
-        return responseReturn(res, 500, {
-          error: "Discount party not configured for transactions.",
-        });
+        throw new Error("Discount party not configured for transactions.");
       }
 
-      // 4. Generate Unique ID and Order Number
+      // 4. Generate order number
       const UniqueId = Date.now().toString(36).toUpperCase();
       const latestOrder = await orderModel
-        .findOne({ companyId: companyId })
+        .findOne({ companyId })
         .sort({ orderNo: -1 })
         .session(session);
       const newOrderId = latestOrder ? Number(latestOrder.orderNo) + 1 : 200001;
 
-      let transaction;
-      let discountTransaction = null;
-      let order; // Declare order here so it's accessible later
-
-      // Create transactions based on whether a discount is applied
+      // 5. Create transactions
+      let transaction,
+        discountTransaction = null;
       if (discount > 0) {
-        transaction = await transactionModel.create(
-          [
-            {
-              transactionNo: UniqueId,
-              debit: debit_party._id,
-              credit: credit_party._id,
-              generatedBy: generatedByUserName,
-              balance: finalAmount,
-              date: currentDateTime, // Use full date and time
-              orderNo: newOrderId,
-              companyId: companyId,
-              ...(branchId && { branchId }), // Conditionally add branchId
-            },
-          ],
-          { session }
-        );
+        [transaction, discountTransaction] = await Promise.all([
+          transactionModel.create(
+            [
+              {
+                transactionNo: UniqueId,
+                debit: debit_party._id,
+                credit: credit_party._id,
+                generatedBy: generatedByUserName,
+                balance: finalAmount,
+                date: currentDateTime,
+                orderNo: newOrderId,
+                companyId,
+                ...(branchId && { branchId }),
+              },
+            ],
+            { session }
+          ),
 
-        discountTransaction = await transactionModel.create(
-          [
-            {
-              transactionNo: UniqueId,
-              debit: discount_party._id,
-              credit: credit_party._id,
-              generatedBy: generatedByUserName,
-              balance: discount,
-              date: currentDateTime, // Use full date and time
-              orderNo: newOrderId,
-              companyId: companyId,
-              ...(branchId && { branchId }), // Conditionally add branchId
-            },
-          ],
-          { session }
-        );
+          transactionModel.create(
+            [
+              {
+                transactionNo: UniqueId,
+                debit: discount_party._id,
+                credit: credit_party._id,
+                generatedBy: generatedByUserName,
+                balance: discount,
+                date: currentDateTime,
+                orderNo: newOrderId,
+                companyId,
+                ...(branchId && { branchId }),
+              },
+            ],
+            { session }
+          ),
+        ]);
       } else {
         transaction = await transactionModel.create(
           [
@@ -343,23 +621,23 @@ class orderController {
               credit: credit_party._id,
               generatedBy: generatedByUserName,
               balance: finalAmount,
-              date: currentDateTime, // Use full date and time
-              companyId: companyId,
+              date: currentDateTime,
               orderNo: newOrderId,
-              ...(branchId && { branchId }), // Conditionally add branchId
+              companyId,
+              ...(branchId && { branchId }),
             },
           ],
           { session }
         );
       }
 
-      // 5. Create the Order Entry
-      order = await orderModel.create(
+      // 6. Create the Order
+      let order = await orderModel.create(
         [
           {
             orderNo: newOrderId,
-            transactionId: transaction[0]._id, // Access the first element of the array
-            party: party,
+            transactionId: transaction[0]._id,
+            party,
             generatedBy: generatedByUserName,
             cartItems,
             totalAmount,
@@ -369,66 +647,58 @@ class orderController {
             service,
             partyId,
             finalAmount,
-            date: currentDateTime, // Use full date and time
-            companyId: companyId,
+            date: currentDateTime,
+            companyId,
             remark,
-            ...(branchId && { branchId }), // Conditionally add branchId
+            ...(branchId && { branchId }),
           },
         ],
         { session }
       );
-      order = order[0]; // Get the actual order object from the array
+      order = order[0];
 
-      // 6. Update Party Balances
+      // 7. Update Party Balances
       debit_party.balance =
         (Number(debit_party.balance) || 0) + Number(finalAmount);
       await debit_party.save({ session });
 
-      if (discount > 0 && discount_party) {
+      if (discount > 0) {
         discount_party.balance =
           (Number(discount_party.balance) || 0) + Number(discount);
         await discount_party.save({ session });
       }
 
-      // Assuming credit_party (res_sales_account) is an income account whose balance increases with credits.
-      // It receives credit entries for both finalAmount and discount from the transactions.
       credit_party.balance =
         (Number(credit_party.balance) || 0) -
         Number(finalAmount) -
         Number(discount);
       await credit_party.save({ session });
 
-      // 7. Handle Bill Transfer Logic (if partyId refers to a room)
+      // 8. Room Bill Handling
       const roomBill = await roomModel.findById(partyId).session(session);
-
+      console.log(roomBill.name);
+      console.log(partyId);
       if (roomBill) {
-        // This block executes if partyId is a valid room ID
         const startDate = moment().format("YYYY-MM-DD");
         const selectedDate = new Date(startDate);
-        var inDate = moment(selectedDate).format("YYYY-MM-DD");
+        const inDate = moment(selectedDate).format("YYYY-MM-DD");
 
         const nextDay = new Date(selectedDate);
         nextDay.setDate(nextDay.getDate() + 1);
-        var outDate = moment(nextDay).format("YYYY-MM-DD");
-
+        const outDate = moment(nextDay).format("YYYY-MM-DD");
         const targetReservation = await reservationModel
           .findOne({
-            "roomDetails.roomId": partyId, // Check if the room exists in roomDetails
-            companyId: companyId,
-            status: { $nin: ["cancel", "checked_out"] }, // Target must be active
-            checkInDate: { $lte: outDate }, // Target starts on or before current reservation's new end date
-            checkOutDate: { $gte: inDate }, // Target ends after current reservation's new start date
-            // Only exclude if existingReservation is found and is different from the target
+            "roomDetails.roomId": partyId,
+            companyId,
+            status: { $ne: "cancel" }, // Only exclude "cancel"
+            checkInDate: { $lte: outDate },
+            checkOutDate: { $gte: inDate },
           })
           .populate("roomDetails.roomId")
           .session(session);
 
-        console.log(
-          targetReservation
-            ? targetReservation._id
-            : "No target reservation found"
-        );
         if (!targetReservation) {
+          console.log("No target reservation found.");
           await session.abortTransaction();
           session.endSession();
           return responseReturn(res, 400, {
@@ -437,19 +707,14 @@ class orderController {
           });
         }
 
-        // --- Accumulate data from existingReservation to targetReservation ---
         console.log(
           `Performing bill transfer to Reservation ${targetReservation.reservationNo}`
         );
 
-        // Ensure restaurants array exists on targetReservation
-        if (!targetReservation.restaurants) {
-          targetReservation.restaurants = []; // Initialize as an empty array if it's null/undefined
+        if (!Array.isArray(targetReservation.restaurants)) {
+          targetReservation.restaurants = [];
         }
 
-        console.log("first"); // This line doesn't seem to have a functional purpose here.
-
-        // b. Accumulate financial amounts (totalAmount, discount, due, finalAmount)
         targetReservation.totalAmount =
           (Number(targetReservation.totalAmount) || 0) +
           (Number(order.totalAmount) || 0);
@@ -463,36 +728,34 @@ class orderController {
           (Number(targetReservation.finalAmount) || 0) +
           (Number(order.finalAmount) || 0);
 
-        // This is line 459:
         targetReservation.restaurants.push({
           restaurant: order.orderNo.toString(),
           restaurantAmount: order.finalAmount,
         });
-        // Save the updated target reservation
+
         await targetReservation.save({ session });
       }
 
-      // Commit the transaction if all operations are successful
+      // 9. Commit and return response
       await session.commitTransaction();
       session.endSession();
 
-      // Send successful response
-      responseReturn(res, 201, {
+      return responseReturn(res, 201, {
         order,
         message: "Order placed successfully",
       });
     } catch (error) {
-      // Abort the transaction if any error occurs
       if (session) {
         await session.abortTransaction();
         session.endSession();
       }
-      console.error("Error placing order:", error); // Log the full error for debugging
-      responseReturn(res, 500, {
+      console.error("Error placing order:", error);
+      return responseReturn(res, 500, {
         error: "Failed to place order due to an internal server error.",
       });
     }
   };
+
   get_company_orders = async (req, res) => {
     const { id, role } = req; // Assuming 'id' is userId/staffId/ownerId and 'role' from auth middleware
     const { page, perPage, searchQuery, status } = req.query; // Extract query parameters

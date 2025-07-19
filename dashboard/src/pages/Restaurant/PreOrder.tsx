@@ -130,6 +130,7 @@ const PreOrder = () => {
     ); // Type assertion
     navigate("/restaurant/order");
     dispatch(remove_pre_order({ preOrderId, partyId }) as any);
+    dispatch(get_orders());
     // Type assertion
   };
 
