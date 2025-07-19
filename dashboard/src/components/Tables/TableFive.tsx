@@ -73,7 +73,6 @@ const TableFive = () => {
   const [showModal, setShowModal] = useState(false);
   const dispatch = useDispatch();
   const componentRef = useRef<HTMLDivElement>(null);
-  console.log(order);
   // --- Pagination States ---
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10; // Fixed number of orders per page

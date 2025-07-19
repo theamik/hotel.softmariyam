@@ -676,8 +676,6 @@ class orderController {
 
       // 8. Room Bill Handling
       const roomBill = await roomModel.findById(partyId).session(session);
-      console.log(roomBill.name);
-      console.log(partyId);
       if (roomBill) {
         const startDate = moment().format("YYYY-MM-DD");
         const selectedDate = new Date(startDate);
