@@ -80,8 +80,6 @@ function ReservationForm() {
   const [endDate, setEndDate] = useState(getNextDate(new Date(), 1));
   const [updatedPaidInfo, setUpdatedPaidInfo] = useState([]); // This remains the 'global' endDate for primary reservation dates
 
-  // State to hold multiple selected rooms for the reservation
-  // Each room will now have its own checkOutDate and calculated dayStay
   const [roomSelections, setRoomSelections] = useState([]);
 
   const dispatch = useDispatch();
@@ -169,7 +167,9 @@ function ReservationForm() {
           roomName: selectedRoomToAdd.label, // Storing name for display purposes
           rackRate: room.categoryId?.rackRate || 0,
           discountRate: room.categoryId?.discountRate || 0, // This is the 'Offer Rate'
-          category: room.categoryId?.name, // Keep category for potential future use or display elsewhere
+          category: room.categoryId?.name,
+          checkInDate: startDate,
+          // Keep category for potential future use or display elsewhere
           checkOutDate: endDate, // Initial check-out date for this specific room
           dayStay: calculateDayGap(startDate, endDate), // Initial dayStay for this room
         },
@@ -199,7 +199,20 @@ function ReservationForm() {
     );
   };
 
-  // Handler for changing individual room's check-out date
+  const handleRoomCheckInDateChange = (roomId, newDate) => {
+    setRoomSelections((prev) =>
+      prev.map((roomSel) =>
+        roomSel.roomId === roomId
+          ? {
+              ...roomSel,
+              checkInDate: newDate,
+              dayStay: calculateDayGap(newDate, roomSel.checkOutDate),
+            }
+          : roomSel
+      )
+    );
+  };
+
   const handleRoomCheckOutDateChange = (roomId, newDate) => {
     setRoomSelections((prev) =>
       prev.map((roomSel) =>
@@ -207,12 +220,14 @@ function ReservationForm() {
           ? {
               ...roomSel,
               checkOutDate: newDate,
-              dayStay: calculateDayGap(startDate, newDate), // Calculate dayStay based on global startDate and new room check-out
+              dayStay: calculateDayGap(roomSel.checkInDate, newDate),
             }
           : roomSel
       )
     );
   };
+
+  // Handler for changing individual room's check-out date
 
   // Prepare paidInfo for submission
 
@@ -266,6 +281,7 @@ function ReservationForm() {
           discountRate: Number(roomSel.discountRate),
           category: roomSel.category,
           dayStay: roomSel.dayStay,
+          checkInDate: moment(roomSel.checkInDate).format("YYYY-MM-DD"),
           checkOutDate: moment(roomSel.checkOutDate).format("YYYY-MM-DD"), // Use the individual room's dayStay
         }));
 
@@ -346,6 +362,7 @@ function ReservationForm() {
         discountRate: Number(roomSel.discountRate),
         category: roomSel.category,
         dayStay: roomSel.dayStay,
+        checkInDate: moment(roomSel.checkInDate).format("YYYY-MM-DD"),
         checkOutDate: moment(roomSel.checkOutDate).format("YYYY-MM-DD"), // Use the individual room's dayStay
       }));
 
@@ -480,13 +497,14 @@ function ReservationForm() {
             roomName: detail.roomId?.name || "N/A", // Assuming roomId is populated or has a name
             rackRate: detail.rackRate || 0,
             discountRate: detail.discountRate || 0, // This is the 'Offer Rate'
-            category: detail.roomId?.categoryId?.name || "N/A", // Assuming category is populated
-            checkOutDate: new Date(reservation.endDate), // Use global endDate as default for each room
+            category: detail.roomId?.categoryId?.name || "N/A",
+            checkInDate: new Date(detail.checkInDate), // Assuming category is populated
+            checkOutDate: new Date(detail.checkOutDate), // Use global endDate as default for each room
             dayStay:
               detail.dayStay ||
               calculateDayGap(
-                new Date(reservation.startDate),
-                new Date(reservation.endDate)
+                new Date(detail.checkInDate),
+                new Date(detail.checkOutDate)
               ), // Use saved dayStay or recalculate
           }))
         );
@@ -618,6 +636,7 @@ function ReservationForm() {
             rackRate: room.categoryId?.rackRate || 0,
             discountRate: room.categoryId?.discountRate || 0,
             category: room.categoryId?.name,
+            checkInDate: startDate,
             checkOutDate: endDate, // Initial check-out for this specific room from global endDate
             dayStay: calculateDayGap(startDate, endDate), // Initial dayStay for this room
           },
@@ -908,6 +927,9 @@ function ReservationForm() {
                     Offer Rate
                   </th>
                   <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
+                    Checked In Date
+                  </th>
+                  <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
                     Checked Out Date
                   </th>
                   <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
@@ -954,11 +976,21 @@ function ReservationForm() {
                     </td>
                     <td className="py-2 px-1">
                       <DatePicker
+                        selected={roomSel.checkInDate}
+                        onChange={(date) =>
+                          handleRoomCheckInDateChange(roomSel.roomId, date)
+                        }
+                        maxDate={roomSel.checkOutDate} // Can't check out before global check-in
+                        className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-1 px-1.5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary text-sm"
+                      />
+                    </td>
+                    <td className="py-2 px-1">
+                      <DatePicker
                         selected={roomSel.checkOutDate}
                         onChange={(date) =>
                           handleRoomCheckOutDateChange(roomSel.roomId, date)
                         }
-                        minDate={startDate} // Can't check out before global check-in
+                        minDate={roomSel.checkInDate} // Can't check out before global check-in
                         className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-1 px-1.5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary text-sm"
                       />
                     </td>

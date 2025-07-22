@@ -169,7 +169,8 @@ function ReservationGroupForm() {
           roomName: selectedRoomToAdd.label, // Storing name for display purposes
           rackRate: room.categoryId?.rackRate || 0,
           discountRate: room.categoryId?.discountRate || 0, // This is the 'Offer Rate'
-          category: room.categoryId?.name, // Keep category for potential future use or display elsewhere
+          category: room.categoryId?.name,
+          checkInDate: startDate, // Keep category for potential future use or display elsewhere
           checkOutDate: endDate, // Initial check-out date for this specific room
           dayStay: calculateDayGap(startDate, endDate), // Initial dayStay for this room
         },
@@ -208,6 +209,20 @@ function ReservationGroupForm() {
               ...roomSel,
               checkOutDate: newDate,
               dayStay: calculateDayGap(startDate, newDate), // Calculate dayStay based on global startDate and new room check-out
+            }
+          : roomSel
+      )
+    );
+  };
+
+  const handleRoomCheckInDateChange = (roomId, newDate) => {
+    setRoomSelections((prev) =>
+      prev.map((roomSel) =>
+        roomSel.roomId === roomId
+          ? {
+              ...roomSel,
+              checkInDate: newDate,
+              dayStay: calculateDayGap(newDate, roomSel.checkOutDate),
             }
           : roomSel
       )
@@ -290,6 +305,7 @@ function ReservationGroupForm() {
       discountRate: Number(roomSel.discountRate),
       category: roomSel.category,
       dayStay: roomSel.dayStay,
+      checkInDate: moment(roomSel.checkInDate).format("YYYY-MM-DD"),
       checkOutDate: moment(roomSel.checkOutDate).format("YYYY-MM-DD"), // Use the individual room's dayStay
     }));
 
@@ -566,6 +582,7 @@ function ReservationGroupForm() {
             rackRate: room.categoryId?.rackRate || 0,
             discountRate: room.categoryId?.discountRate || 0,
             category: room.categoryId?.name,
+            checkInDate: startDate,
             checkOutDate: endDate, // Initial check-out for this specific room from global endDate
             dayStay: calculateDayGap(startDate, endDate), // Initial dayStay for this room
           },
@@ -852,6 +869,9 @@ function ReservationGroupForm() {
                     Offer Rate
                   </th>
                   <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
+                    Checked In Date
+                  </th>
+                  <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
                     Checked Out Date
                   </th>
                   <th className="py-2 px-1 text-sm font-medium text-black dark:text-white">
@@ -893,6 +913,16 @@ function ReservationGroupForm() {
                             e.target.value
                           )
                         }
+                        className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-1 px-1.5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary text-sm"
+                      />
+                    </td>
+                    <td className="py-2 px-1">
+                      <DatePicker
+                        selected={roomSel.checkInDate}
+                        onChange={(date) =>
+                          handleRoomCheckInDateChange(roomSel.roomId, date)
+                        }
+                        maxDate={roomSel.checkOutDate} // Can't check out before global check-in
                         className="w-full rounded-lg border-[1.5px] border-stroke bg-transparent py-1 px-1.5 text-black outline-none transition focus:border-primary active:border-primary dark:border-form-strokedark dark:bg-form-input dark:text-white dark:focus:border-primary text-sm"
                       />
                     </td>

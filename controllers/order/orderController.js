@@ -2766,11 +2766,9 @@ class orderController {
           discountRate: room.discountRate,
           category: room.category,
           dayStay: room.dayStay,
+          checkInDate: moment(room.checkInDate).format("YYYY-MM-DD"),
           checkOutDate: moment(room.checkOutDate).format("YYYY-MM-DD"), // Ensure it's formatted as a string for the backend
           // Only include checkInDate if it's sent from the frontend and required by the backend
-          ...(room.checkInDate && {
-            checkInDate: moment(room.checkInDate).format("YYYY-MM-DD"),
-          }),
         };
       });
       let updatedPaidInfo = [];
@@ -3319,7 +3317,6 @@ class orderController {
             "Required financial accounts not found. Please set up 'hot_sales_account', 'discount', and 'cash_hotel' parties.",
         });
       }
-      console.log(reservationId);
 
       // Fetch the reservation being updated/cancelled
       const existingReservation = await reservationModel
@@ -3409,6 +3406,7 @@ class orderController {
             discountRate: Number(detail.discountRate),
             category: detail.roomId.categoryId?.name || detail.category, // Use populated name or original category
             dayStay: Number(detail.dayStay),
+            checkInDate: moment(detail.checkInDate).format("YYYY-MM-DD"),
             checkOutDate: moment(detail.checkOutDate).format("YYYY-MM-DD"),
           })
         );
@@ -3584,6 +3582,7 @@ class orderController {
           discountRate: Number(roomDet.discountRate),
           category: roomDet.category,
           dayStay: Number(roomDet.dayStay),
+          checkInDate: moment(roomDet.checkInDate).format("YYYY-MM-DD"),
           checkOutDate: moment(roomDet.checkOutDate).format("YYYY-MM-DD"),
         })),
 

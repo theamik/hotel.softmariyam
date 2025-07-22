@@ -97,6 +97,21 @@ const HotelInvoiceReady = () => {
   // and 'due' is calculated as finalAmount - totalPaidAmount
   const calculatedDue = Number(reservation?.finalAmount) || 0;
 
+  const allCheckInDates = reservation?.roomDetails
+    ?.map((r) => new Date(r.checkInDate))
+    .filter(Boolean);
+  const allCheckOutDates = reservation?.roomDetails
+    ?.map((r) => new Date(r.checkOutDate))
+    .filter(Boolean);
+
+  const globalCheckInDate = allCheckInDates?.length
+    ? new Date(Math.min(...allCheckInDates.map((date) => date.getTime())))
+    : null;
+
+  const globalCheckOutDate = allCheckOutDates?.length
+    ? new Date(Math.max(...allCheckOutDates.map((date) => date.getTime())))
+    : null;
+
   return (
     <>
       <div className="max-w-[95rem] px-4 sm:px-6 lg:px-8 mx-auto my-4 sm:my-10">
@@ -224,8 +239,8 @@ const HotelInvoiceReady = () => {
                       Check-in Date:
                     </dt>
                     <dd className="col-span-3 text-gray-900 dark:text-neutral-300">
-                      {moment(reservation?.checkInDate).isValid()
-                        ? moment(reservation?.checkInDate).format("ll")
+                      {globalCheckInDate
+                        ? moment(globalCheckInDate).format("ll")
                         : "N/A"}
                     </dd>
                   </dl>
@@ -234,8 +249,8 @@ const HotelInvoiceReady = () => {
                       Check-out Date:
                     </dt>
                     <dd className="col-span-3 text-gray-900 dark:text-neutral-300">
-                      {moment(reservation?.checkOutDate).isValid()
-                        ? moment(reservation?.checkOutDate).format("ll")
+                      {globalCheckOutDate
+                        ? moment(globalCheckOutDate).format("ll")
                         : "N/A"}
                     </dd>
                   </dl>

@@ -11,6 +11,8 @@ interface RoomDetailProp {
   dayStay: number;
   rackRate: number;
   discountRate: number;
+  checkInDate: string;
+  checkOutDate: string;
 }
 
 interface PaidInfoProp {
@@ -59,6 +61,8 @@ interface ReservationObject {
     dayStay?: number;
     rackRate?: number;
     discountRate?: number;
+    checkInDate?: string;
+    checkOutDate?: string;
   }[]; // Updated to match HotelInvoiceReady nested structure
   others?: OtherChargeProp[];
   restaurants?: RestaurantChargeProp[];
@@ -156,6 +160,8 @@ const Chart: React.FC<ChartProps> = ({
           dayStay: Number(r?.dayStay) || 0,
           rackRate: Number(r?.rackRate) || 0,
           discountRate: Number(r?.discountRate) || 0,
+          checkInDate: Number(r?.checkInDate) || 0,
+          checkOutDate: Number(r?.checkOutDate) || 0,
         }))
       : [];
 
@@ -232,6 +238,21 @@ const Chart: React.FC<ChartProps> = ({
   const totalPaidAmount = calculatedTotalPaid;
 
   const calculatedDue = displayFinalAmount - totalPaidAmount;
+
+  const allCheckInDates = roomDetails
+    ?.map((r) => new Date(r.checkInDate))
+    .filter(Boolean);
+  const allCheckOutDates = roomDetails
+    ?.map((r) => new Date(r.checkOutDate))
+    .filter(Boolean);
+
+  const globalCheckInDate = allCheckInDates?.length
+    ? new Date(Math.min(...allCheckInDates.map((date) => date.getTime())))
+    : null;
+
+  const globalCheckOutDate = allCheckOutDates?.length
+    ? new Date(Math.max(...allCheckOutDates.map((date) => date.getTime())))
+    : null;
 
   return (
     <>
@@ -360,8 +381,8 @@ const Chart: React.FC<ChartProps> = ({
                       Check-in Date:
                     </dt>
                     <dd className="col-span-3 text-gray-900 dark:text-neutral-300">
-                      {moment(displayCheckInDate).isValid()
-                        ? moment(displayCheckInDate).format("ll")
+                      {globalCheckInDate
+                        ? moment(globalCheckInDate).format("ll")
                         : "N/A"}
                     </dd>
                   </dl>
@@ -370,8 +391,8 @@ const Chart: React.FC<ChartProps> = ({
                       Check-out Date:
                     </dt>
                     <dd className="col-span-3 text-gray-900 dark:text-neutral-300">
-                      {moment(displayCheckOutDate).isValid()
-                        ? moment(displayCheckOutDate).format("ll")
+                      {globalCheckOutDate
+                        ? moment(globalCheckOutDate).format("ll")
                         : "N/A"}
                     </dd>
                   </dl>
